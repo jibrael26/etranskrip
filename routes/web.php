@@ -1,0 +1,24 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Livewire\TranskripForm;
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+// Grup route yang butuh login
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    // 1. Dashboard
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    // 2. Transkrip (Aplikasi Utama Anda)
+    Route::get('/transkrip', TranskripForm::class)->name('transkrip');
+});
+
+// --- PERBAIKAN ---
+// Baris "require ... auth.php" DIHAPUS karena file-nya tidak ada.
+// Laravel Fortify (yang Anda pakai) sudah otomatis mengatur route login/register sendiri.

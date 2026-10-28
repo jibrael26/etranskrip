@@ -6,7 +6,6 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component {
@@ -62,18 +61,6 @@ new class extends Component {
         Session::flash('status', 'verification-link-sent');
     }
 
-    #[Computed]
-    public function hasUnverifiedEmail(): bool
-    {
-        return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
-    }
-
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
-    }
 }; ?>
 
 <section class="w-full">
@@ -88,7 +75,7 @@ new class extends Component {
             <div>
                 <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
 
-                @if ($this->hasUnverifiedEmail)
+                @if (Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail())
                     <div>
                         <flux:text class="mt-4">
                             {{ __('Your email address is unverified.') }}
@@ -120,8 +107,8 @@ new class extends Component {
             </div>
         </form>
 
-        @if ($this->showDeleteUser)
-            <livewire:pages::settings.delete-user-form />
+        @if (! Auth::user() instanceof MustVerifyEmail || Auth::user()->hasVerifiedEmail())
+            <livewire:settings.⚡delete-user-form />
         @endif
     </x-pages::settings.layout>
 </section>

@@ -33,6 +33,7 @@ class TranskripForm extends Component
     public $totalBobot = 0;
     public $ipk = 0.00;
     public $predikat = '';
+    public $ringkasanManual = false;
 
     public function mount()
     {
@@ -42,6 +43,44 @@ class TranskripForm extends Component
     // Fungsi dijalankan setiap kali data mataKuliah berubah (setelah paste)
     public function updatedMataKuliah()
     {
+        $this->hitungIPK();
+    }
+
+    public function updatedRingkasanManual(): void
+    {
+        if (! $this->ringkasanManual) {
+            $this->hitungIPK();
+        }
+    }
+
+    public function updatedIpk(): void
+    {
+        $this->ipk = min(4, max(0, (float) $this->ipk));
+        $this->perbaruiPredikat();
+    }
+
+    public function tambahMataKuliah(): void
+    {
+        $this->mataKuliah[] = [
+            'no' => (string) (count($this->mataKuliah) + 1),
+            'nama' => '',
+            'sks' => '',
+            'paket' => '',
+            'bobot' => '',
+            'nilai' => '',
+        ];
+
+        $this->hitungIPK();
+    }
+
+    public function hapusMataKuliah(int $index): void
+    {
+        if (! array_key_exists($index, $this->mataKuliah)) {
+            return;
+        }
+
+        unset($this->mataKuliah[$index]);
+        $this->mataKuliah = array_values($this->mataKuliah);
         $this->hitungIPK();
     }
 
@@ -60,24 +99,35 @@ class TranskripForm extends Component
         foreach ($this->mataKuliah as $mk) {
             $sks = floatval($mk['sks']);
             $nilaiHuruf = strtoupper(trim($mk['nilai']));
+            $bobotImpor = $mk['bobot'] ?? '';
 
-            if (isset($bobotNilai[$nilaiHuruf])) {
+            if ($bobotImpor !== '' && is_numeric($bobotImpor)) {
+                $poin = (float) $bobotImpor;
+            } elseif (isset($bobotNilai[$nilaiHuruf])) {
                 $poin = $bobotNilai[$nilaiHuruf];
+            } else {
+                continue;
+            }
+
+            if ($sks > 0) {
                 $totalSks += $sks;
                 $totalPoin += ($sks * $poin);
             }
         }
 
-        $this->totalSks = $totalSks;
         $this->totalBobot = $totalPoin;
+        $computedIpk = $totalSks > 0 ? round($totalPoin / $totalSks, 2) : 0.00;
 
-        if ($totalSks > 0) {
-            $this->ipk = number_format($totalPoin / $totalSks, 2);
-        } else {
-            $this->ipk = 0.00;
+        if (! $this->ringkasanManual) {
+            $this->totalSks = $totalSks;
+            $this->ipk = $computedIpk;
         }
 
-        // Tentukan Predikat Sederhana
+        $this->perbaruiPredikat();
+    }
+
+    private function perbaruiPredikat(): void
+    {
         if ($this->ipk >= 3.51) $this->predikat = 'Dengan Pujian (Cum Laude)';
         elseif ($this->ipk >= 3.01) $this->predikat = 'Sangat Memuaskan';
         elseif ($this->ipk >= 2.76) $this->predikat = 'Memuaskan';

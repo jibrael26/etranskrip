@@ -1,92 +1,63 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <h1 class="font-bold text-xl text-blue-600">E-Transkrip</h1>
+<nav x-data="{ open: false, profileOpen: false, scrolled: false }" @scroll.window="scrolled = window.scrollY > 8" @keydown.escape.window="open = false; profileOpen = false" class="sticky top-0 z-30 border-b border-white/10 bg-[#34415f] text-white transition-shadow duration-300" :class="scrolled ? 'shadow-xl shadow-slate-900/25' : 'shadow-lg shadow-slate-900/10'">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex h-[72px] items-center justify-between gap-6">
+            <a href="{{ route('dashboard') }}" class="flex shrink-0 items-center gap-3" wire:navigate>
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-black text-[#ff862d] ring-1 ring-white/15">ET</span>
+                <span class="hidden sm:block">
+                    <span class="block text-[10px] font-bold uppercase tracking-[0.25em] text-orange-200">Portal Akademik</span>
+                    <span class="block text-lg font-extrabold tracking-tight">E-Transkrip</span>
+                </span>
+            </a>
+
+            <div class="hidden items-center gap-1 md:flex">
+                <a href="{{ route('dashboard') }}" wire:navigate class="rounded-xl px-4 py-2.5 text-sm font-semibold transition {{ request()->routeIs('dashboard') ? 'bg-[#ff862d] text-white shadow-lg shadow-orange-900/20' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">Dashboard</a>
+                <a href="{{ route('transkrip') }}" wire:navigate class="rounded-xl px-4 py-2.5 text-sm font-semibold transition {{ request()->routeIs('transkrip') ? 'bg-[#ff862d] text-white shadow-lg shadow-orange-900/20' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">Buat Transkrip</a>
+            </div>
+
+            <div class="relative hidden sm:block">
+                <button @click="profileOpen = !profileOpen" :aria-expanded="profileOpen" class="flex items-center gap-3 rounded-2xl p-1.5 pr-2 text-left transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-orange-300/60">
+                    <div class="hidden lg:block">
+                        <p class="text-sm font-bold">{{ auth()->user()->name }}</p>
+                        <p class="text-xs text-slate-300">Administrator</p>
+                    </div>
+                    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[#ffac3f] font-bold text-[#34415f]">{{ auth()->user()->initials() }}</span>
+                    <svg class="hidden h-4 w-4 text-slate-300 lg:block transition-transform" :class="profileOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div x-show="profileOpen" x-transition @click.outside="profileOpen = false" class="absolute right-0 top-14 w-64 origin-top-right rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl shadow-slate-900/20" style="display: none;">
+                    <div class="border-b border-slate-100 px-3 py-3">
+                        <p class="truncate text-sm font-bold text-[#0d1b3e]">{{ auth()->user()->name }}</p>
+                        <p class="truncate text-xs text-slate-500">{{ auth()->user()->email }}</p>
+                    </div>
+                    <a href="{{ route('profile.edit') }}" wire:navigate class="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-orange-50 hover:text-[#ed6f24]">
+                        <svg class="h-5 w-5 text-[#ff862d]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15.2 7.8a3.2 3.2 0 1 1-6.4 0 3.2 3.2 0 0 1 6.4 0ZM4.8 19.2a5.2 5.2 0 0 1 10.4 0M16 5.5h3.5M17.75 3.75v3.5"/></svg>
+                        Pengaturan Profil
                     </a>
-                </div>
-
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-
-                    <x-nav-link :href="route('transkrip')" :active="request()->routeIs('transkrip')" wire:navigate>
-                        {{ __('Buat Transkrip') }}
-                    </x-nav-link>
+                    <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-100 pt-1">
+                        @csrf
+                        <button type="submit" class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="m17 16 4-4m0 0-4-4m4 4H7m6 4v1a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>
+                            Keluar
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
-                <x-dropdown align="right" width="48">
-                    <x-slot name="trigger">
-                        <button
-                            class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name"
-                                x-on:profile-updated.window="name = $event.detail.name"></div>
-
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                        clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </button>
-                    </x-slot>
-
-                    <x-slot name="content">
-                        <button wire:click="logout" class="w-full text-start">
-                            <x-dropdown-link>
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
-                        </button>
-                    </x-slot>
-                </x-dropdown>
-            </div>
-
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open"
-                    class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{ 'hidden': open, 'inline-flex': !open }" class="inline-flex"
-                            stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{ 'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round"
-                            stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div :class="{ 'block': open, 'hidden': !open }" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" wire:navigate>
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-
-            <x-responsive-nav-link :href="route('transkrip')" :active="request()->routeIs('transkrip')" wire:navigate>
-                {{ __('Buat Transkrip') }}
-            </x-responsive-nav-link>
+            <button @click="open = !open" class="rounded-xl p-2 text-slate-200 hover:bg-white/10 md:hidden" aria-label="Buka menu">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
         </div>
 
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800" x-data="{{ json_encode(['name' => auth()->user()->name]) }}" x-text="name"
-                    x-on:profile-updated.window="name = $event.detail.name"></div>
-                <div class="font-medium text-sm text-gray-500">{{ auth()->user()->email }}</div>
+        <div x-show="open" x-transition class="border-t border-white/10 pb-4 pt-3 md:hidden">
+            <div class="space-y-1">
+                <a href="{{ route('dashboard') }}" wire:navigate class="block rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('dashboard') ? 'bg-[#ff862d]' : 'text-slate-200 hover:bg-white/10' }}">Dashboard</a>
+                <a href="{{ route('transkrip') }}" wire:navigate class="block rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('transkrip') ? 'bg-[#ff862d]' : 'text-slate-200 hover:bg-white/10' }}">Buat Transkrip</a>
             </div>
-
-            <div class="mt-3 space-y-1">
-                <button wire:click="logout" class="w-full text-start">
-                    <x-responsive-nav-link>
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
-                </button>
+            <div class="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
+                <div><p class="text-sm font-bold">{{ auth()->user()->name }}</p><p class="text-xs text-slate-300">{{ auth()->user()->email }}</p></div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('profile.edit') }}" wire:navigate class="rounded-lg px-3 py-2 text-xs font-bold text-orange-200 hover:bg-white/10">Profil</a>
+                    <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="rounded-lg px-3 py-2 text-xs font-bold text-orange-200 hover:bg-white/10">Keluar</button></form>
+                </div>
             </div>
         </div>
     </div>

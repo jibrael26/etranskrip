@@ -19,6 +19,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/transkrip', TranskripForm::class)->name('transkrip');
 });
 
+require __DIR__.'/settings.php';
+
 // --- PERBAIKAN ---
 // Baris "require ... auth.php" DIHAPUS karena file-nya tidak ada.
 // Laravel Fortify (yang Anda pakai) sudah otomatis mengatur route login/register sendiri.

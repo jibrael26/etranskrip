@@ -32,12 +32,17 @@ class TranskripForm extends Component
     public $totalSks = 0;
     public $totalBobot = 0;
     public $ipk = 0.00;
+    public $komprehensif = 0.00;
+    public $nilaiYudisium = 0.00;
     public $predikat = '';
+    public $predikatManual = false;
     public $ringkasanManual = false;
+    public $yudisiumManual = false;
 
     public function mount()
     {
         $this->pejabat['tgl_cetak'] = now()->format('d F Y');
+        $this->hitungYudisium();
     }
 
     // Fungsi dijalankan setiap kali data mataKuliah berubah (setelah paste)
@@ -56,7 +61,33 @@ class TranskripForm extends Component
     public function updatedIpk(): void
     {
         $this->ipk = min(4, max(0, (float) $this->ipk));
-        $this->perbaruiPredikat();
+        $this->hitungYudisium();
+        if (! $this->predikatManual) {
+            $this->perbaruiPredikat();
+        }
+    }
+
+    public function updatedKomprehensif(): void
+    {
+        $this->komprehensif = min(4, max(0, (float) $this->komprehensif));
+        $this->hitungYudisium();
+    }
+
+    public function updatedYudisiumManual(): void
+    {
+        if (! $this->yudisiumManual) {
+            $this->hitungYudisium();
+        }
+    }
+
+    public function updatedNilaiYudisium(): void
+    {
+        $this->nilaiYudisium = min(4, max(0, (float) $this->nilaiYudisium));
+    }
+
+    public function updatedPredikat(): void
+    {
+        $this->predikatManual = true;
     }
 
     public function tambahMataKuliah(): void
@@ -123,12 +154,22 @@ class TranskripForm extends Component
             $this->ipk = $computedIpk;
         }
 
-        $this->perbaruiPredikat();
+        $this->hitungYudisium();
+        if (! $this->predikatManual) {
+            $this->perbaruiPredikat();
+        }
+    }
+
+    private function hitungYudisium(): void
+    {
+        if (! $this->yudisiumManual) {
+            $this->nilaiYudisium = round((($this->ipk * 7) + ($this->komprehensif * 3)) / 10, 2);
+        }
     }
 
     private function perbaruiPredikat(): void
     {
-        if ($this->ipk >= 3.51) $this->predikat = 'Dengan Pujian (Cum Laude)';
+        if ($this->ipk >= 3.51) $this->predikat = 'Pujian';
         elseif ($this->ipk >= 3.01) $this->predikat = 'Sangat Memuaskan';
         elseif ($this->ipk >= 2.76) $this->predikat = 'Memuaskan';
         else $this->predikat = '-';
@@ -136,17 +177,28 @@ class TranskripForm extends Component
 
     public function render()
     {
-        // Pecah data menjadi 2 bagian untuk kolom Kiri dan Kanan (Layout PDF)
-        $jumlahData = count($this->mataKuliah);
-        $bagiDua = ceil($jumlahData / 2);
+        $mataKuliah = array_values($this->mataKuliah);
+        $semesterKiri = array_fill(1, 4, []);
+        $semesterKanan = array_fill(5, 4, []);
+        $semesterLainnya = [];
 
-        // Jika data kosong, inisialisasi array kosong
-        $kolomKiri = array_slice($this->mataKuliah, 0, $bagiDua);
-        $kolomKanan = array_slice($this->mataKuliah, $bagiDua);
+        foreach ($mataKuliah as $mk) {
+            $semester = (int) preg_replace('/\D+/', '', (string) ($mk['paket'] ?? ''));
+
+            if ($semester >= 1 && $semester <= 4) {
+                $semesterKiri[$semester][] = $mk;
+            } elseif ($semester >= 5 && $semester <= 8) {
+                $semesterKanan[$semester][] = $mk;
+            } else {
+                $semesterLainnya[] = $mk;
+            }
+        }
 
         return view('livewire.transkrip-form', [
-            'kolomKiri' => $kolomKiri,
-            'kolomKanan' => $kolomKanan
+            'semesterKiri' => $semesterKiri,
+            'semesterKanan' => $semesterKanan,
+            'semesterLainnya' => $semesterLainnya,
+            'hasMataKuliah' => count($mataKuliah) > 0,
         ])->layout('components.app-layout');
     }
 }

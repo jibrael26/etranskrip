@@ -90,6 +90,15 @@
                         <label class="field-label">Nomor Ijazah<input type="text" wire:model.live="header.no_ijazah" placeholder="Nomor ijazah" class="modern-input"></label>
                         <label class="field-label">Tanggal Lulus<input type="text" wire:model.live="header.tgl_lulus" placeholder="Tanggal lulus" class="modern-input"></label>
                         <label class="field-label">Nomor Transkrip<input type="text" wire:model.live="header.no_transkrip" placeholder="Nomor transkrip" class="modern-input"></label>
+                        <label class="field-label">Nilai Komprehensif<input type="number" min="0" max="4" step="0.01" wire:model.live="komprehensif" placeholder="0.00" class="modern-input"></label>
+                        <label class="field-label">Predikat Kelulusan
+                            <select wire:model.live="predikat" class="modern-input">
+                                <option value="">Pilih predikat kelulusan</option>
+                                <option value="Pujian">Pujian</option>
+                                <option value="Sangat Memuaskan">Sangat Memuaskan</option>
+                                <option value="Memuaskan">Memuaskan</option>
+                            </select>
+                        </label>
                     </div>
                 </section>
 
@@ -220,12 +229,18 @@
                                 IPK
                                 <span class="normal-case tracking-normal text-slate-400">edit manual</span>
                             </span>
-                            <input type="number" min="0" max="4" step="0.01" wire:model.live="ipk" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="IPK">
+                            <input type="number" min="0" max="4,00" step="0.01" wire:model.live="ipk" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="IPK">
                         </label>
                         <div class="flex items-center gap-3 sm:col-span-3">
                             <input id="ringkasan-manual" type="checkbox" wire:model.live="ringkasanManual" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
                             <label for="ringkasan-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Total SKS dan IPK</label>
                             <span class="text-xs text-slate-400">{{ $ringkasanManual ? 'Nilai manual aktif' : 'Nilai dihitung dari tabel' }}</span>
+                        </div>
+                        <div class="flex items-center gap-3 sm:col-span-3">
+                            <input id="yudisium-manual" type="checkbox" wire:model.live="yudisiumManual" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
+                            <label for="yudisium-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Nilai Yudisium</label>
+                            <input type="number" min="0" max="4" step="0.01" wire:model.live="nilaiYudisium" @disabled(!$yudisiumManual) class="summary-input max-w-32" aria-label="Nilai Yudisium">
+                            <span class="text-xs text-slate-400">{{ $yudisiumManual ? 'Nilai manual aktif' : 'Nilai dihitung otomatis' }}</span>
                         </div>
                     </div>
                 @else
@@ -239,14 +254,13 @@
         </div>
     </div>
 
-    <div class="paper-folio mx-auto bg-white text-black leading-tight relative">
+    <div class="paper-preview flex justify-center overflow-x-auto bg-slate-100 px-4 py-8">
+        <div class="paper-folio bg-white text-black leading-tight relative">
 
-        <div class="flex items-center justify-center border-b-2 border-black pb-2 mb-2">
-            <div class="absolute left-10 top-8">
-                <div
-                    class="w-16 h-16 border border-gray-400 flex items-center justify-center text-xs text-center rounded-full">
-                    LOGO
-                </div>
+        <div class="flex items-center justify-center border-b-[3px] border-black pb-2 mb-2">
+            <div class="absolute left-[16mm] top-[8mm] h-[23mm] w-[23mm]">
+                <img src="{{ asset('images/logo-unima.png') }}" alt="Logo Universitas Negeri Manado"
+                    class="h-full w-full object-contain">
             </div>
 
             <div class="text-center w-full">
@@ -258,139 +272,214 @@
             </div>
         </div>
 
-        <div class="text-center mb-4">
-            <h2 class="font-bold text-lg underline">TRANSKRIP AKADEMIK</h2>
-            <div class="flex justify-center gap-8 text-xs font-bold">
-                <p>PROGRAM: SARJANA</p>
-                <p>NOMOR TRANSKRIP: {{ $header['no_transkrip'] }}</p>
-            </div>
+        <div class="transcript-text mb-1 text-center">
+            <h2 class="transcript-text-heading text-lg font-bold">TRANSKRIP AKADEMIK</h2>
+            <p class="text-xs">PROGRAM : SARJANA</p>
+            <p class="text-xs font-bold">NOMOR TRANSKRIP : {{ $header['no_transkrip'] }}</p>
+            <p class="text-xs font-bold">NOMOR IJAZAH : {{ $header['no_ijazah'] }}</p>
         </div>
 
-        <div class="mb-2 text-xs font-bold">
-            <div class="flex">
-                <div class="w-32">Nama</div>
-                <div class="w-4">:</div>
-                <div class="flex-1">{{ $header['nama'] }}</div>
+        <div class="transcript-text relative left-[15mm] mx-auto mb-2 grid w-[120mm] grid-cols-[45mm_0.75rem_1fr] gap-y-0.5 text-xs">
+            <div>Nama</div>
+            <div class="left-0">:</div>
+            <div>{{ $header['nama'] }}</div>
 
-                <div class="w-32">Nomor Ijazah</div>
-                <div class="w-4">:</div>
-                <div class="w-48">{{ $header['no_ijazah'] }}</div>
-            </div>
-            <div class="flex">
-                <div class="w-32">Tempat/Tanggal Lahir</div>
-                <div class="w-4">:</div>
-                <div class="flex-1">{{ $header['ttl'] }}</div>
+            <div>Tempat / Tanggal Lahir</div>
+            <div class="left-0">:</div>
+            <div>{{ $header['ttl'] }}</div>
 
-                <div class="w-32">Tanggal Lulus</div>
-                <div class="w-4">:</div>
-                <div class="w-48">{{ $header['tgl_lulus'] }}</div>
-            </div>
-            <div class="flex">
-                <div class="w-32">NIM</div>
-                <div class="w-4">:</div>
-                <div class="flex-1">{{ $header['nim'] }}</div>
-            </div>
-            <div class="flex">
-                <div class="w-32">Program Studi</div>
-                <div class="w-4">:</div>
-                <div class="flex-1 uppercase">{{ $header['prodi'] }}</div>
-            </div>
+            <div>NIM</div>
+            <div class="left-0">:</div>
+            <div>{{ $header['nim'] }}</div>
+
+            <div>Nama &amp; Jenjang Program Studi</div>
+            <div class="left-0">:</div>
+            <div class="uppercase">{{ $header['prodi'] }}</div>
+
+            <div>Tanggal Lulus</div>
+            <div class="left-0">:</div>
+            <div>{{ $header['tgl_lulus'] }}</div>
         </div>
 
-        <div class="flex gap-4 items-start h-[210mm] overflow-hidden">
+        <div class="transcript-tables flex items-stretch gap-4">
+            <img
+                class="transcript-table-watermark"
+                src="{{ asset('images/logo-unima.png') }}"
+                alt=""
+                aria-hidden="true">
 
-            <div class="w-1/2">
-                <table class="w-full border-collapse border border-black text-[9px]">
+            <div class="transcript-column relative z-10 w-1/2">
+                <table class="transcript-table h-full w-full border-collapse border border-black text-[13px]">
                     <thead>
                         <tr class="bg-gray-100 text-center">
-                            <th class="border border-black px-1 py-1 w-6">No</th>
-                            <th class="border border-black px-1 py-1">Matakuliah</th>
+                            <th class="border border-black px-1 py-1 w-6">NO</th>
+                            <th class="border border-black px-1 py-1">MATAKULIAH</th>
                             <th class="border border-black px-1 py-1 w-6">SKS</th>
-                            <th class="border border-black px-1 py-1 w-8">Bobot</th>
-                            <th class="border border-black px-1 py-1 w-6">Nilai</th>
+                            <th class="border border-black px-1 py-1 w-6">NILAI</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($kolomKiri as $mk)
-                            <tr>
-                                <td class="border border-black px-1 text-center">{{ $mk['no'] }}</td>
-                                <td class="border border-black px-1 truncate max-w-[180px]">{{ $mk['nama'] }}</td>
-                                <td class="border border-black px-1 text-center">{{ $mk['sks'] }}</td>
-                                <td class="border border-black px-1 text-center">{{ $mk['bobot'] ?? '' }}</td>
-                                <td class="border border-black px-1 text-center font-bold">{{ $mk['nilai'] }}</td>
-                            </tr>
+                        @foreach ($semesterKiri as $semester => $mataKuliahSemester)
+                            @if (count($mataKuliahSemester) > 0)
+                                <tr>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1">SEMESTER {{ $semester }}</td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                </tr>
+                                @foreach ($mataKuliahSemester as $mk)
+                                    <tr>
+                                        <td class="border border-black px-1 text-center">{{ $mk['no'] }}</td>
+                                        <td class="border border-black px-1 truncate max-w-[180px]">{{ $mk['nama'] }}</td>
+                                        <td class="border border-black px-1 text-center">{{ $mk['sks'] }}</td>
+                                        <td class="border border-black px-1 text-center">{{ $mk['nilai'] }}</td>
+                                    </tr>
+                                @endforeach
+                            @endif
                         @endforeach
-                        @if (count($kolomKiri) < 1)
+                        @if (count($semesterLainnya) > 0)
                             <tr>
-                                <td colspan="5" class="border border-black p-4 text-center italic">Belum ada data
-                                </td>
+                                <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                <td class="semester-row-cell border border-black px-1 pt-2 pb-1">SEMESTER -</td>
+                                <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
                             </tr>
                         @endif
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="w-1/2">
-                <table class="w-full border-collapse border border-black text-[9px]">
-                    <thead>
-                        <tr class="bg-gray-100 text-center">
-                            <th class="border border-black px-1 py-1 w-6">No</th>
-                            <th class="border border-black px-1 py-1">Matakuliah</th>
-                            <th class="border border-black px-1 py-1 w-6">SKS</th>
-                            <th class="border border-black px-1 py-1 w-8">Bobot</th>
-                            <th class="border border-black px-1 py-1 w-6">Nilai</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($kolomKanan as $mk)
+                        @foreach ($semesterLainnya as $mk)
                             <tr>
                                 <td class="border border-black px-1 text-center">{{ $mk['no'] }}</td>
                                 <td class="border border-black px-1 truncate max-w-[180px]">{{ $mk['nama'] }}</td>
                                 <td class="border border-black px-1 text-center">{{ $mk['sks'] }}</td>
-                                <td class="border border-black px-1 text-center">{{ $mk['bobot'] ?? '' }}</td>
-                                <td class="border border-black px-1 text-center font-bold">{{ $mk['nilai'] }}</td>
+                                <td class="border border-black px-1 text-center">{{ $mk['nilai'] }}</td>
                             </tr>
                         @endforeach
+                        @if (! $hasMataKuliah)
+                            <tr>
+                                <td colspan="4" class="border border-black p-4 text-center italic">Belum ada data</td>
+                            </tr>
+                        @endif
+                        <tr class="ipk-summary ipk-summary-start">
+                            <td rowspan="2" class="border border-black"></td>
+                            <td rowspan="2" class="border border-black px-1"></td>
+                            <td class="border border-black"></td>
+                            <td class="border border-black"></td>
+                        </tr>
+                        <tr class="ipk-summary">
+                            <td class="border border-black px-1"></td>
+                            <td class="border border-black px-1"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="transcript-column relative z-10 w-1/2">
+                <table class="transcript-table h-full w-full border-collapse border border-black text-[12px]">
+                    <thead>
+                        <tr class="bg-gray-100 text-center">
+                            <th class="border border-black px-1 py-1 w-6">NO</th>
+                            <th class="border border-black px-1 py-1">MATAKULIAH</th>
+                            <th class="border border-black px-1 py-1 w-6">SKS</th>
+                            <th class="border border-black px-1 py-1 w-6">NILAI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($semesterKanan as $semester => $mataKuliahSemester)
+                            @if (count($mataKuliahSemester) > 0)
+                                <tr>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1">SEMESTER {{ $semester }}</td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                    <td class="semester-row-cell border border-black px-1 pt-2 pb-1"></td>
+                                </tr>
+                                @foreach ($mataKuliahSemester as $mk)
+                                    <tr>
+                                        <td class="border border-black px-1 text-center">{{ $mk['no'] }}</td>
+                                        <td class="border border-black px-1 truncate max-w-[180px]">{{ $mk['nama'] }}</td>
+                                        <td class="border border-black px-1 text-center">{{ $mk['sks'] }}</td>
+                                        <td class="border border-black px-1 text-center">{{ $mk['nilai'] }}</td>
+                                    </tr>
+                                @endforeach
+                            @endif
+                        @endforeach
+                        @if (! $hasMataKuliah)
+                            <tr>
+                                <td colspan="4" class="border border-black p-4 text-center italic">Belum ada data</td>
+                            </tr>
+                        @endif
+                        <tr class="ipk-summary ipk-summary-start">
+                            <td rowspan="2" class="border border-black"></td>
+                            <td rowspan="2" class="border border-black px-1 text-right">
+                                <span class="ipk-summary-content">
+                                    <span>IPK :</span>
+                                    <u>Total Nilai</u>
+                                    <span>=</span>
+                                    <u>{{ $totalBobot }}</u>
+                                    <span></span>
+                                    <span class="text-center">SKS</span>
+                                    <span></span>
+                                    <span>{{ $totalSks }}</span>
+                                </span>
+                            </td>
+                            <td class="border border-black"></td>
+                            <td class="border border-black"></td>
+                        </tr>
+                        <tr class="ipk-summary">
+                            <td class="border border-black px-1 text-center">=</td>
+                            <td class="border border-black px-1 text-center">{{ $ipk }}</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="mt-2 border-t-2 border-black pt-2 flex text-xs">
-            <div class="w-1/2 pr-4">
-                <table class="w-full font-bold">
-                    <tr>
-                        <td width="120">Total SKS</td>
-                        <td>: {{ $totalSks }} SKS</td>
-                    </tr>
-                    <tr>
-                        <td>Total Poin</td>
-                        <td>: {{ $totalBobot }}</td>
-                    </tr>
-                    <tr>
-                        <td>Indeks Prestasi (IPK)</td>
-                        <td>: {{ $ipk }}</td>
-                    </tr>
-                    <tr>
-                        <td>Predikat Kelulusan</td>
-                        <td>: {{ $predikat }}</td>
-                    </tr>
-                </table>
+        <div class="transcript-index border border-black text-center">
+            <div class="font-bold">Indeks Prestasi :</div>
+            <div class="transcript-index-formula">
+                <span class="transcript-index-fraction">
+                    <span ><u class="font-size= 9px; !important;">IPK (7) + Komprehensif (3)</u></span>
+                    <span class="font-size= 9px; !important;">10</span>
+                </span>
+                <span>=</span>
+                <span class="transcript-index-fraction">
+                    <span><u>{{ number_format((float) $ipk, 2, ',', '') }} (7) + {{ number_format((float) $komprehensif, 2, ',', '') }} (3)</u></span>
+                    <span>10</span>
+                </span>
+                <span>=</span>
+                <strong class="transcript-index-value">{{ number_format((float) $nilaiYudisium, 2, ',', '') }}</strong>
             </div>
+        </div>
 
-            <div class="w-1/2 text-center relative">
-                <p>Tondano, {{ $pejabat['tgl_cetak'] }}</p>
+        <div class="mt-2 pt-2 flex text-xs">
+            <div class=" pr-7">
+                <div class="transcript-summary font-bold">
+                    <div class="transcript-summary-row">
+                        <span>Total SKS</span>
+                        <span class="transcript-summary-row-value text-center">:</span>
+                        <span class="transcript-summary-row-value-text">{{ $totalSks }} SKS</span>
+                    </div>
+                    <div class="transcript-summary-row">
+                        <span>Indeks Prestasi</span>
+                        <span class="transcript-summary-row-value text-center">:</span>
+                        <span class="transcript-summary-row-value-text">{{ number_format((float) $nilaiYudisium, 2, ',', '') }}</span>
+                    </div>
+                    <div class="transcript-summary-row">
+                        <span>Predikat Kelulusan</span>
+                        <span class="transcript-summary-row-value text-center">:</span>
+                        <span class="transcript-summary-row-value-text">{{ $predikat }}</span>
+                    </div>
+                </div>
+                <div class="transcript-photo  w-20 h-24 border border-black flex items-center justify-center text-[10px] text-gray-500">
+                    Pas Foto<br>3 x 4
+                </div>
+            </div>
+            <div class="transcript-sign ml-auto w-1/2 text-center relative">
+                <p class="font-bold">Tondano, {{ $header['tgl_lulus'] }}</p>
                 <p class="font-bold">{{ $pejabat['jabatan'] }}</p>
 
                 <div class="h-16"></div>
 
                 <p class="font-bold underline">{{ $pejabat['nama'] }}</p>
-                <p>NIP. {{ $pejabat['nip'] }}</p>
-
-                <div
-                    class="absolute top-8 left-4 w-20 h-24 border border-black flex items-center justify-center text-[10px] text-gray-500">
-                    Pas Foto<br>3 x 4
-                </div>
+                <p class="font-bold">NIP. {{ $pejabat['nip'] }}</p>
             </div>
         </div>
 
@@ -411,18 +500,156 @@
         .summary-input:focus { border-color: #ff862d; background: white; box-shadow: 0 0 0 3px rgba(255, 134, 45, .12); }
         .summary-input:disabled { cursor: not-allowed; opacity: .6; }
         .paper-folio {
-            width: 215mm;
-            height: 330mm;
+            box-sizing: border-box;
+            width: 8.5in;
+            height: 13in;
             padding: 10mm 15mm;
             /* Atur margin sesuai printer */
             background: white;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             font-family: 'Times New Roman', serif;
         }
+        .transcript-text-heading {
+            font-family: calibri, arial, sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            line-height: 1;
+        }
+        .transcript-text {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.2;}
+
+        .transcript-table {
+            font-family: Calibri, Arial, sans-serif;
+            font-size: 11px;
+            row-gap: 3px;
+            line-height: 1.4;
+            border-width: .5px;
+        }
+        .transcript-column {
+            display: flex;
+            align-items: stretch;
+        }
+        .transcript-tables {
+            position: relative;
+            isolation: isolate;
+        }
+        .transcript-table-watermark {
+            position: absolute;
+            z-index: 0;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center;
+            opacity: .11;
+            pointer-events: none;
+        }
+        .transcript-table,
+        .transcript-table th,
+        .transcript-table td {
+            border-width: .5px !important;
+            border-color: #000;
+        }
+        .transcript-table td { border-top: 0; border-bottom: 0; }
+        .transcript-table .semester-row-cell { border-top: 0; border-bottom: 0; }
+        .transcript-table .ipk-summary-start td { padding-top: 12px; }
+        .ipk-summary-content {
+            display: inline-grid;
+            grid-template-columns: auto auto auto auto;
+            align-items: center;
+            column-gap: 8px;
+            row-gap: 2px;
+            white-space: nowrap;
+        }
+        .transcript-index {
+            font-family: Calibri, Arial, sans-serif;
+            border-width: .5px;
+            padding: 2px 6px;
+            font-size: 10px;
+            line-height: 1.15;
+        }
+        .transcript-index-formula {
+            font-family: 'times new roman', serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 2px;
+            font-size: 9px;
+        }
+        .transcript-index-fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.15;
+        }
+        .transcript-summary {
+            text-align: left;
+            padding: 0px 26px;
+            display: grid;
+            gap: 2px;
+            width: max-content;
+        }
+        .transcript-summary-row {
+            text: center;
+            display: grid;
+            grid-template-columns: 130px 12px max-content;
+            column-gap: 4px;
+            font-size: 8px;
+            white-space: nowrap;
+            margin-left: 5px;
+            line-height: 1.5;
+            margin-top: -1px;
+            font-family: calibri, arial, sans-serif;
+            font-size: 11px;
+        }
+        .transcript-summary-row-value {
+            font-family: calibri, arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            padding-left: 117px;
+            text-align: left;
+        }
+        .transcript-summary-row-value-text {
+            font-family: calibri, arial, sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            padding-left: 110px;
+        }
+
+        .transcript-index-value{
+            font-family: 'times new roman', serif;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        
+
+        .transcript-sign {
+            text-align: left;
+            display: grid;
+            justify-items: left;
+            padding-left: 15px;
+            padding-top: 50px;
+            font-family: calibri, arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.2;
+            margin-top: 10px;
+        }
+
+        .transcript-photo {
+            font-family: calibri, arial, sans-serif;
+            font-size: 10px;
+            line-height: 1.2;
+            margin-top: 15px;
+            margin-left: 315px;
+        }
 
         @media print {
             @page {
-                size: 215mm 330mm;
+                size: 8.5in 13in;
                 margin: 0;
             }
 
@@ -437,11 +664,18 @@
                 display: none !important;
             }
 
+            .paper-preview {
+                display: block;
+                padding: 0;
+                overflow: visible;
+                background: white;
+            }
+
             .paper-folio {
                 box-shadow: none;
                 margin: 0;
-                width: 100%;
-                height: 100%;
+                width: 8.5in;
+                height: 13in;
                 page-break-after: always;
             }
         }

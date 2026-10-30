@@ -305,13 +305,13 @@
     <div class="paper-preview flex justify-center overflow-x-auto bg-slate-100 px-4 py-8">
         <div class="paper-folio bg-white text-black leading-tight relative">
 
-        <div class="flex items-center justify-center border-b-[3px] border-black pb-2 mb-2">
-            <div class="transcript-logo absolute left-[18mm] top-[10mm] h-[25mm] w-[25mm]">
+        <div class="transcript-header flex items-center border-b-[3px] border-black pb-2 mb-2">
+            <div class="transcript-logo absolute left-[5mm] top-1/2 h-[24mm] w-[24mm] -translate-y-1/2">
                 <img src="{{ asset('images/logo-unima.png') }}" alt="Logo Universitas Negeri Manado"
                     class="h-full w-full object-contain">
             </div>
 
-            <div class="text-center w-full">
+            <div class="transcript-header-content text-center">
                 <h3 class="text-sm font-bold uppercase">Kementerian Pendidikan Tinggi, Sains, dan Teknologi</h3>
                 <h1 class="text-xl font-bold uppercase">UNIVERSITAS NEGERI MANADO</h1>
                 <h2 class="text-lg font-bold uppercase">FAKULTAS TEKNIK</h2>

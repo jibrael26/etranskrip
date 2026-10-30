@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use App\Livewire\ProfileSettings;
+use App\Livewire\PasswordSettings;
 use Livewire\Volt\Volt;
 
 Route::middleware(['auth'])->group(function () {
@@ -12,7 +13,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Volt::route('settings/password', 'settings.⚡password')->name('user-password.edit');
+    Route::get('settings/password', PasswordSettings::class)->name('user-password.edit');
     Volt::route('settings/two-factor', 'settings.⚡two-factor')
         ->middleware(
             when(

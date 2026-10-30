@@ -17,6 +17,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 2. Transkrip (Aplikasi Utama Anda)
     Route::get('/transkrip', TranskripForm::class)->name('transkrip');
+    Route::get('/transkrip/{transcript}', TranskripForm::class)->name('transkrip.edit');
+    Route::get('/history-transkrip', function () {
+        $transcripts = auth()->user()->transcripts()->latest()->paginate(12);
+
+        return view('transcripts.index', compact('transcripts'));
+    })->name('transcripts.index');
 });
 
 require __DIR__.'/settings.php';

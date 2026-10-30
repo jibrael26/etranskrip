@@ -12,6 +12,7 @@
             <div class="hidden items-center gap-1 md:flex">
                 <a href="{{ route('dashboard') }}" wire:navigate class="rounded-xl px-4 py-2.5 text-sm font-semibold transition {{ request()->routeIs('dashboard') ? 'bg-[#ff862d] text-white shadow-lg shadow-orange-900/20' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">Dashboard</a>
                 <a href="{{ route('transkrip') }}" wire:navigate class="rounded-xl px-4 py-2.5 text-sm font-semibold transition {{ request()->routeIs('transkrip') ? 'bg-[#ff862d] text-white shadow-lg shadow-orange-900/20' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">Buat Transkrip</a>
+                <a href="{{ route('transcripts.index') }}" wire:navigate class="rounded-xl px-4 py-2.5 text-sm font-semibold transition {{ request()->routeIs('transcripts.*') ? 'bg-[#ff862d] text-white shadow-lg shadow-orange-900/20' : 'text-slate-200 hover:bg-white/10 hover:text-white' }}">History</a>
             </div>
 
             <div class="relative hidden sm:block">
@@ -51,6 +52,7 @@
             <div class="space-y-1">
                 <a href="{{ route('dashboard') }}" wire:navigate class="block rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('dashboard') ? 'bg-[#ff862d]' : 'text-slate-200 hover:bg-white/10' }}">Dashboard</a>
                 <a href="{{ route('transkrip') }}" wire:navigate class="block rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('transkrip') ? 'bg-[#ff862d]' : 'text-slate-200 hover:bg-white/10' }}">Buat Transkrip</a>
+                <a href="{{ route('transcripts.index') }}" wire:navigate class="block rounded-xl px-4 py-3 text-sm font-semibold {{ request()->routeIs('transcripts.*') ? 'bg-[#ff862d]' : 'text-slate-200 hover:bg-white/10' }}">History</a>
             </div>
             <div class="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
                 <div><p class="text-sm font-bold">{{ auth()->user()->name }}</p><p class="text-xs text-slate-300">{{ auth()->user()->email }}</p></div>

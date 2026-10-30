@@ -5,15 +5,18 @@
     searchTerm: '',
     filterPaket: '',
     filterNilai: '',
+    filterJenis: '',
     rowMatches(row) {
         const search = this.searchTerm.trim().toLowerCase();
         const name = (row.dataset.search || '').toLowerCase();
         const paket = row.dataset.paket || '';
         const nilai = row.dataset.nilai || '';
+        const jenis = row.dataset.jenis || '';
 
         return (!search || name.includes(search))
             && (!this.filterPaket || paket === this.filterPaket)
-            && (!this.filterNilai || nilai === this.filterNilai);
+            && (!this.filterNilai || nilai === this.filterNilai)
+            && (!this.filterJenis || jenis === this.filterJenis);
     },
     rowVisible(row) {
         if (!this.rowMatches(row)) {
@@ -35,25 +38,40 @@
         let pastedData = e.clipboardData.getData('text');
         let rows = pastedData.split('\n');
         let tempMataKuliah = [];
+        const validGrades = ['A', 'B', 'C', 'D', 'E'];
 
         rows.forEach((row) => {
             // Pecah berdasarkan TAB (Standar Excel)
-            let cols = row.split('\t').map((col) => col.trim().replace(/^\uFEFF/, ''));
+            let cols = row.split('\t').map((col) => col.trim().replace(/^\uFEFF/, '').replace(/\r$/, ''));
 
             // LOGIKA PARSING SESUAI GAMBAR EXCEL ANDA:
             // Excel Anda punya banyak kolom. Kita ambil berdasarkan index:
             // Index 0 = No, 2 = Nama, 3 = Total SKS, 5 = Paket Sem.,
+            // Index 4 = Kode W/P (Wajib/Pilihan),
             // 8 = Bobot Nilai (3.00, 4.00, dan seterusnya),
             // 9 = Kode Nilai (A, B, C, dan seterusnya).
 
             if (cols.length >= 10 && cols[0].toLowerCase() !== 'no') {
+                // Cari kode nilai dari isinya agar tetap terbaca saat kolom Excel bergeser.
+                const nilaiIndex = cols.reduce((lastIndex, col, index) => {
+                    return validGrades.includes(col.toUpperCase()) ? index : lastIndex;
+                }, -1);
+                const nilai = nilaiIndex >= 0 ? cols[nilaiIndex].toUpperCase() : '';
+                const bobotIndex = nilaiIndex > 0
+                    ? [...Array(nilaiIndex).keys()].reverse().find((index) => {
+                        const value = Number.parseFloat(cols[index].replace(',', '.'));
+                        return Number.isFinite(value) && value >= 0 && value <= 4;
+                    })
+                    : -1;
+
                 tempMataKuliah.push({
                     no: cols[0].trim(),
                     nama: cols[2].trim(),
                     sks: cols[3].trim(),
+                    jenis: ['W', 'P'].includes((cols[4] || '').toUpperCase()) ? cols[4].toUpperCase() : '',
                     paket: cols[5].trim(),
-                    bobot: cols[8].trim(),
-                    nilai: cols[9].trim()
+                    bobot: bobotIndex >= 0 ? cols[bobotIndex].replace(',', '.') : '',
+                    nilai
                 });
             }
         });
@@ -87,7 +105,7 @@
                         <label class="field-label">Nama Lengkap<input type="text" wire:model.live="header.nama" placeholder="Masukkan nama lengkap" class="modern-input"></label>
                         <label class="field-label">NIM<input type="text" wire:model.live="header.nim" placeholder="Nomor induk mahasiswa" class="modern-input"></label>
                         <label class="field-label">Tempat, Tanggal Lahir<input type="text" wire:model.live="header.ttl" placeholder="Contoh: Manado, 12 Mei 2002" class="modern-input"></label>
-                        <label class="field-label">Nomor Ijazah<input type="text" wire:model.live="header.no_ijazah" placeholder="Nomor ijazah" class="modern-input"></label>
+                        <label class="field-label">Nomor Ijazah/NPISN<input type="text" wire:model.live="header.no_ijazah" placeholder="Nomor ijazah" class="modern-input"></label>
                         <label class="field-label">Tanggal Lulus<input type="text" wire:model.live="header.tgl_lulus" placeholder="Tanggal lulus" class="modern-input"></label>
                         <label class="field-label">Nomor Transkrip<input type="text" wire:model.live="header.no_transkrip" placeholder="Nomor transkrip" class="modern-input"></label>
                         <label class="field-label">Nilai Komprehensif<input type="number" min="0" max="4" step="0.01" wire:model.live="komprehensif" placeholder="0.00" class="modern-input"></label>
@@ -110,9 +128,21 @@
                     </div>
                     <textarea @paste.prevent="parsePaste($event)" class="h-32 w-full resize-none rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white outline-none placeholder:text-slate-400 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/30" placeholder="Klik lalu tekan Ctrl + V untuk menempel data Excel..."></textarea>
                     <p class="mt-3 text-xs leading-5 text-slate-300"><span class="font-bold text-orange-300">Tips:</span> Nama, Total SKS, Paket Sem., Bobot Nilai, dan Kode Nilai akan dideteksi otomatis dari tabel Excel.</p>
-                    <button onclick="window.print()" class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
-                        Cetak PDF <span aria-hidden="true">→</span>
-                    </button>
+                    <div class="mt-6 grid gap-2 sm:grid-cols-2">
+                        <button type="button" wire:click="simpanTranskrip" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
+                            <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
+                            <span wire:loading wire:target="simpanTranskrip">Menyimpan...</span>
+                        </button>
+                        <button type="button" onclick="window.print()" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
+                            Cetak PDF <span aria-hidden="true">→</span>
+                        </button>
+                    </div>
+                    @if ($savedMessage)
+                        <p class="mt-3 text-center text-xs font-bold text-orange-200" role="status">{{ $savedMessage }}</p>
+                    @endif
+                    @if ($errors->any())
+                        <p class="mt-3 text-center text-xs font-bold text-red-200" role="alert">{{ $errors->first() }}</p>
+                    @endif
                 </section>
             </div>
 
@@ -153,18 +183,24 @@
                             </select>
                             <select x-model="filterNilai" class="modern-input w-full sm:w-40">
                                 <option value="">Semua nilai</option>
-                                @foreach (['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E'] as $nilai)
+                                @foreach (['A', 'B', 'C', 'D', 'E'] as $nilai)
                                     <option value="{{ $nilai }}">{{ $nilai }}</option>
                                 @endforeach
+                            </select>
+                            <select x-model="filterJenis" class="modern-input w-full sm:w-40">
+                                <option value="">Semua jenis</option>
+                                <option value="W">Wajib (W)</option>
+                                <option value="P">Pilihan (P)</option>
                             </select>
                             <button type="button" @click="showAll = !showAll" class="w-full whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-[#34415f] transition hover:border-[#ff862d] hover:text-[#ed6f24] sm:w-auto" x-text="showAll ? 'Tampilkan sebagian' : 'Tampilkan semua'"></button>
                         </div>
                         <div class="max-h-[620px] overflow-auto">
-                        <table class="w-full min-w-[920px] text-left text-sm">
+                        <table class="w-full min-w-[1020px] text-left text-sm">
                             <thead class="sticky top-0 z-10 bg-[#f1f5f9] text-[11px] uppercase tracking-wider text-slate-500 shadow-sm">
                                 <tr>
                                     <th class="w-16 px-5 py-3 font-bold">No</th>
                                     <th class="px-3 py-3 font-bold">Nama Mata Kuliah</th>
+                                    <th class="w-20 px-3 py-3 font-bold">W/P</th>
                                     <th class="w-24 px-3 py-3 font-bold">SKS</th>
                                     <th class="w-28 px-3 py-3 font-bold">Paket Sem.</th>
                                     <th class="w-28 px-3 py-3 font-bold">Bobot Nilai</th>
@@ -174,12 +210,17 @@
                             </thead>
                             <tbody data-course-body class="divide-y divide-slate-100">
                                 @foreach ($mataKuliah as $index => $mk)
-                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" class="odd:bg-white even:bg-slate-50/60 transition hover:bg-orange-50">
+                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" class="odd:bg-white even:bg-slate-50/60 transition hover:bg-orange-50">
                                         <td class="px-5 py-3.5">
                                             <input type="text" wire:model.live="mataKuliah.{{ $index }}.no" class="edit-input text-center" aria-label="Nomor mata kuliah">
                                         </td>
                                         <td class="px-3 py-3.5">
                                             <input type="text" wire:model.live="mataKuliah.{{ $index }}.nama" class="edit-input" placeholder="Nama mata kuliah">
+                                        </td>
+                                        <td class="px-3 py-3.5">
+                                            <div class="edit-input bg-slate-100 text-center font-bold" aria-label="Kode jenis mata kuliah">
+                                                {{ $mk['jenis'] ?? '-' }}
+                                            </div>
                                         </td>
                                         <td class="px-3 py-3.5">
                                             <input type="number" min="0" step="0.5" wire:model.live="mataKuliah.{{ $index }}.sks" class="edit-input" placeholder="0">
@@ -193,7 +234,7 @@
                                         <td class="px-3 py-3.5">
                                             <select wire:model.live="mataKuliah.{{ $index }}.nilai" class="edit-input">
                                                 <option value="">Pilih nilai</option>
-                                                @foreach (['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'D', 'E'] as $nilai)
+                                                @foreach (['A', 'B', 'C', 'D', 'E'] as $nilai)
                                                     <option value="{{ $nilai }}">{{ $nilai }}</option>
                                                 @endforeach
                                             </select>
@@ -212,7 +253,7 @@
                         Tidak ada mata kuliah yang sesuai dengan pencarian atau filter.
                     </div>
                     </div>
-                    <div x-show="tableOpen" x-cloak class="grid gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:grid-cols-3 sm:p-6">
+                    <div x-show="tableOpen" x-cloak class="grid gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:grid-cols-4 sm:p-6">
                         <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                             <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mata kuliah</p>
                             <p class="mt-1 text-xl font-black text-[#0d1b3e]">{{ count($mataKuliah) }}</p>
@@ -222,7 +263,14 @@
                                 Total SKS
                                 <span class="normal-case tracking-normal text-slate-400">edit manual</span>
                             </span>
-                            <input type="number" min="0" step="0.5" wire:model.live="totalSks" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="Total SKS">
+                            <input type="number" min="0" step="1" wire:model.live="totalSks" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="Total SKS">
+                        </label>
+                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <span class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                                Total Nilai
+                                <span class="normal-case tracking-normal text-slate-400">edit manual</span>
+                            </span>
+                            <input type="number" min="0" step="1" wire:model.live="totalBobot" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="Total Nilai">
                         </label>
                         <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                             <span class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -233,7 +281,7 @@
                         </label>
                         <div class="flex items-center gap-3 sm:col-span-3">
                             <input id="ringkasan-manual" type="checkbox" wire:model.live="ringkasanManual" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
-                            <label for="ringkasan-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Total SKS dan IPK</label>
+                            <label for="ringkasan-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Total SKS, Total Nilai, dan IPK</label>
                             <span class="text-xs text-slate-400">{{ $ringkasanManual ? 'Nilai manual aktif' : 'Nilai dihitung dari tabel' }}</span>
                         </div>
                         <div class="flex items-center gap-3 sm:col-span-3">
@@ -258,7 +306,7 @@
         <div class="paper-folio bg-white text-black leading-tight relative">
 
         <div class="flex items-center justify-center border-b-[3px] border-black pb-2 mb-2">
-            <div class="absolute left-[16mm] top-[8mm] h-[23mm] w-[23mm]">
+            <div class="transcript-logo absolute left-[18mm] top-[10mm] h-[25mm] w-[25mm]">
                 <img src="{{ asset('images/logo-unima.png') }}" alt="Logo Universitas Negeri Manado"
                     class="h-full w-full object-contain">
             </div>
@@ -282,11 +330,11 @@
         <div class="transcript-text relative left-[15mm] mx-auto mb-2 grid w-[120mm] grid-cols-[45mm_0.75rem_1fr] gap-y-0.5 text-xs">
             <div>Nama</div>
             <div class="left-0">:</div>
-            <div>{{ $header['nama'] }}</div>
+            <div class="uppercase">{{ $header['nama'] }}</div>
 
             <div>Tempat / Tanggal Lahir</div>
             <div class="left-0">:</div>
-            <div>{{ $header['ttl'] }}</div>
+            <div class="uppercase">{{ $header['ttl'] }}</div>
 
             <div>NIM</div>
             <div class="left-0">:</div>
@@ -298,7 +346,7 @@
 
             <div>Tanggal Lulus</div>
             <div class="left-0">:</div>
-            <div>{{ $header['tgl_lulus'] }}</div>
+            <div class="uppercase">{{ $header['tgl_lulus'] }}</div>
         </div>
 
         <div class="transcript-tables flex items-stretch gap-4">
@@ -413,19 +461,19 @@
                                     <span>IPK :</span>
                                     <u>Total Nilai</u>
                                     <span>=</span>
-                                    <u>{{ $totalBobot }}</u>
+                                    <u>{{ number_format((float) $totalBobot, 0, ',', '.') }}</u>
                                     <span></span>
                                     <span class="text-center">SKS</span>
                                     <span></span>
-                                    <span>{{ $totalSks }}</span>
+                                    <span>{{ number_format((float) $totalSks, 0, ',', '.') }}</span>
                                 </span>
                             </td>
-                            <td class="border border-black"></td>
                             <td class="border border-black"></td>
                         </tr>
                         <tr class="ipk-summary">
                             <td class="border border-black px-1 text-center">=</td>
                             <td class="border border-black px-1 text-center">{{ $ipk }}</td>
+
                         </tr>
                     </tbody>
                 </table>
@@ -435,17 +483,17 @@
         <div class="transcript-index border border-black text-center">
             <div class="font-bold">Indeks Prestasi :</div>
             <div class="transcript-index-formula">
-                <span class="transcript-index-fraction">
-                    <span ><u class="font-size= 9px; !important;">IPK (7) + Komprehensif (3)</u></span>
-                    <span class="font-size= 9px; !important;">10</span>
+                <span class="transcript-index-fraction font-bold font-size= 9px; !important;">
+                    <span class="font-bold"><u class="font-size= 9px; !important;">IPK (7) + Komprehensif (3)</u></span>
+                    <span class="font-size= 9px; font-weight: bold !important;">10</span>
                 </span>
                 <span>=</span>
-                <span class="transcript-index-fraction">
+                <span class="transcript-index-fraction font-bold">
                     <span><u>{{ number_format((float) $ipk, 2, ',', '') }} (7) + {{ number_format((float) $komprehensif, 2, ',', '') }} (3)</u></span>
-                    <span>10</span>
+                    <span class="font-size= 9px; font-weight: bold !important;">10</span>
                 </span>
                 <span>=</span>
-                <strong class="transcript-index-value">{{ number_format((float) $nilaiYudisium, 2, ',', '') }}</strong>
+                <strong class="transcript-index-value font-bold">{{ number_format((float) $nilaiYudisium, 2, ',', '') }}</strong>
             </div>
         </div>
 
@@ -455,7 +503,7 @@
                     <div class="transcript-summary-row">
                         <span>Total SKS</span>
                         <span class="transcript-summary-row-value text-center">:</span>
-                        <span class="transcript-summary-row-value-text">{{ $totalSks }} SKS</span>
+                        <span class="transcript-summary-row-value-text">{{ number_format((float) $totalSks, 0, ',', '.') }} SKS</span>
                     </div>
                     <div class="transcript-summary-row">
                         <span>Indeks Prestasi</span>
@@ -567,24 +615,32 @@
             font-family: Calibri, Arial, sans-serif;
             border-width: .5px;
             padding: 2px 6px;
-            font-size: 10px;
+            font-size: 11px;
             line-height: 1.15;
         }
         .transcript-index-formula {
-            font-family: 'times new roman', serif;
+            font-family: 'Cambria Math';
             display: inline-flex;
             align-items: center;
             gap: 8px;
             justify-content: center;
             margin-top: 2px;
-            font-size: 9px;
+            font-size: 8px;
         }
         .transcript-index-fraction {
+            font-family: 'Cambria Math';
             display: inline-flex;
             flex-direction: column;
             align-items: center;
             line-height: 1.15;
         }
+        .transcript-index-value{
+            font-family: 'Cambria Math';
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+
         .transcript-summary {
             text-align: left;
             padding: 0px 26px;
@@ -601,7 +657,7 @@
             white-space: nowrap;
             margin-left: 5px;
             line-height: 1.5;
-            margin-top: -1px;
+            margin-top: 1px;
             font-family: calibri, arial, sans-serif;
             font-size: 11px;
         }
@@ -618,13 +674,6 @@
             font-weight: bold;
             padding-left: 110px;
         }
-
-        .transcript-index-value{
-            font-family: 'times new roman', serif;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
         
 
         .transcript-sign {
@@ -673,9 +722,12 @@
 
             .paper-folio {
                 box-shadow: none;
-                margin: 0;
+                align-items: center;
+                margin: 0 auto;
                 width: 8.5in;
                 height: 13in;
+                padding: 7mm 7mm;
+                padding-top: 0mm;
                 page-break-after: always;
             }
         }

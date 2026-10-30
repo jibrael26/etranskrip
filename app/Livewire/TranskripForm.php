@@ -2,10 +2,14 @@
 
 namespace App\Livewire;
 
+use App\Models\Transcript;
 use Livewire\Component;
 
 class TranskripForm extends Component
 {
+    public ?int $transcriptId = null;
+    public string $savedMessage = '';
+
     // Data Mahasiswa & Dokumen (Sesuai PDF)
     public $header = [
         'nama' => '',
@@ -39,10 +43,87 @@ class TranskripForm extends Component
     public $ringkasanManual = false;
     public $yudisiumManual = false;
 
-    public function mount()
+    public function mount(?Transcript $transcript = null)
     {
-        $this->pejabat['tgl_cetak'] = now()->format('d F Y');
-        $this->hitungYudisium();
+        if ($transcript?->exists) {
+            abort_unless($transcript->user_id === auth()->id(), 404);
+
+            $this->transcriptId = $transcript->id;
+            $this->header = array_merge($this->header, $transcript->header);
+            $this->pejabat = array_merge($this->pejabat, $transcript->pejabat);
+            $this->mataKuliah = $transcript->mata_kuliah;
+            $this->totalSks = round($transcript->total_sks);
+            $this->totalBobot = round($transcript->total_bobot);
+            $this->ipk = $transcript->ipk;
+            $this->komprehensif = $transcript->komprehensif;
+            $this->nilaiYudisium = $transcript->nilai_yudisium;
+            $this->predikat = $transcript->predikat ?? '';
+            $this->predikatManual = true;
+        }
+
+        if ($this->pejabat['tgl_cetak'] === '') {
+            $this->pejabat['tgl_cetak'] = now()->format('d F Y');
+        }
+
+        if (! $this->transcriptId) {
+            $this->header['no_transkrip'] = $this->nomorTranskripBerikutnya();
+            $this->hitungYudisium();
+        }
+    }
+
+    private function nomorTranskripBerikutnya(): string
+    {
+        $nomorAwal = '0033/S1/2026';
+        $terakhir = auth()->user()->transcripts()->latest('created_at')->value('header');
+
+        if (! is_array($terakhir) || ! isset($terakhir['no_transkrip'])) {
+            return $nomorAwal;
+        }
+
+        $nomorTerakhir = trim((string) $terakhir['no_transkrip']);
+
+        if (! preg_match('/^(\\d+)(\\/.*)?$/', $nomorTerakhir, $matches)) {
+            return $nomorAwal;
+        }
+
+        $angkaBerikutnya = (int) $matches[1] + 1;
+        $formatSisa = $matches[2] ?? '/S1/'.now()->year;
+
+        return str_pad((string) $angkaBerikutnya, max(4, strlen($matches[1])), '0', STR_PAD_LEFT).$formatSisa;
+    }
+
+    public function simpanTranskrip(): void
+    {
+        $this->validate([
+            'header.nama' => ['required', 'string', 'max:255'],
+            'header.nim' => ['required', 'string', 'max:100'],
+            'mataKuliah' => ['required', 'array', 'min:1'],
+        ], [
+            'header.nama.required' => 'Nama mahasiswa wajib diisi.',
+            'header.nim.required' => 'NIM wajib diisi.',
+            'mataKuliah.min' => 'Tambahkan minimal satu mata kuliah sebelum menyimpan.',
+        ]);
+
+        $transcript = $this->transcriptId
+            ? auth()->user()->transcripts()->findOrFail($this->transcriptId)
+            : new Transcript(['user_id' => auth()->id()]);
+
+        $transcript->fill([
+            'student_name' => $this->header['nama'],
+            'student_nim' => $this->header['nim'],
+            'header' => $this->header,
+            'pejabat' => $this->pejabat,
+            'mata_kuliah' => array_values($this->mataKuliah),
+            'total_sks' => $this->totalSks,
+            'total_bobot' => $this->totalBobot,
+            'ipk' => $this->ipk,
+            'komprehensif' => $this->komprehensif,
+            'nilai_yudisium' => $this->nilaiYudisium,
+            'predikat' => $this->predikat,
+        ])->save();
+
+        $this->transcriptId = $transcript->id;
+        $this->savedMessage = 'Transkrip berhasil disimpan.';
     }
 
     // Fungsi dijalankan setiap kali data mataKuliah berubah (setelah paste)
@@ -85,6 +166,16 @@ class TranskripForm extends Component
         $this->nilaiYudisium = min(4, max(0, (float) $this->nilaiYudisium));
     }
 
+    public function updatedTotalSks(): void
+    {
+        $this->totalSks = max(0, (int) round((float) $this->totalSks));
+    }
+
+    public function updatedTotalBobot(): void
+    {
+        $this->totalBobot = max(0, (int) round((float) $this->totalBobot));
+    }
+
     public function updatedPredikat(): void
     {
         $this->predikatManual = true;
@@ -95,6 +186,7 @@ class TranskripForm extends Component
         $this->mataKuliah[] = [
             'no' => (string) (count($this->mataKuliah) + 1),
             'nama' => '',
+            'jenis' => '',
             'sks' => '',
             'paket' => '',
             'bobot' => '',
@@ -120,11 +212,14 @@ class TranskripForm extends Component
         $totalSks = 0;
         $totalPoin = 0;
 
-        // Konversi Nilai Huruf ke Angka
-        $bobotNilai = [
-            'A' => 4.00, 'A-' => 3.75,
-            'B+' => 3.50, 'B' => 3.00, 'B-' => 2.75,
-            'C+' => 2.50, 'C' => 2.00, 'D' => 1.00, 'E' => 0.00
+        // Bobot angka dari Excel menjadi nilai utama. Nilai huruf hanya
+        // digunakan sebagai fallback ketika bobot angka tidak tersedia.
+        $rentangNilai = [
+            'A' => [3.60, 4.00],
+            'B' => [2.75, 3.59],
+            'C' => [2.00, 2.74],
+            'D' => [0.01, 1.99],
+            'E' => [0.00, 0.00],
         ];
 
         foreach ($this->mataKuliah as $mk) {
@@ -132,10 +227,15 @@ class TranskripForm extends Component
             $nilaiHuruf = strtoupper(trim($mk['nilai']));
             $bobotImpor = $mk['bobot'] ?? '';
 
-            if ($bobotImpor !== '' && is_numeric($bobotImpor)) {
-                $poin = (float) $bobotImpor;
-            } elseif (isset($bobotNilai[$nilaiHuruf])) {
-                $poin = $bobotNilai[$nilaiHuruf];
+            $bobot = is_numeric($bobotImpor) ? (float) $bobotImpor : null;
+
+            if ($bobot !== null && $bobot >= 0 && $bobot <= 4) {
+                $poin = $bobot;
+            } elseif (isset($rentangNilai[$nilaiHuruf])) {
+                [$minimum, $maksimum] = $rentangNilai[$nilaiHuruf];
+                $poin = $minimum === $maksimum
+                    ? $minimum
+                    : round(($minimum + $maksimum) / 2, 2);
             } else {
                 continue;
             }
@@ -146,11 +246,13 @@ class TranskripForm extends Component
             }
         }
 
-        $this->totalBobot = $totalPoin;
+        if (! $this->ringkasanManual) {
+            $this->totalBobot = round($totalPoin);
+        }
         $computedIpk = $totalSks > 0 ? round($totalPoin / $totalSks, 2) : 0.00;
 
         if (! $this->ringkasanManual) {
-            $this->totalSks = $totalSks;
+            $this->totalSks = round($totalSks);
             $this->ipk = $computedIpk;
         }
 

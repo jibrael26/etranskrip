@@ -177,7 +177,8 @@ new class extends Component {
     }
 } ?>
 
-<section class="w-full">
+<section class="min-h-[calc(100vh-72px)] bg-[#f7f9fc] px-4 py-10 sm:px-6 lg:px-8">
+<div class="mx-auto max-w-7xl">
     @include('partials.settings-heading')
 
     <flux:heading class="sr-only">{{ __('Two-Factor Authentication Settings') }}</flux:heading>
@@ -186,48 +187,38 @@ new class extends Component {
         :heading="__('Two Factor Authentication')"
         :subheading="__('Manage your two-factor authentication settings')"
     >
-        <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
+        <div class="flex w-full flex-col space-y-6 rounded-3xl border border-slate-200 bg-white p-5 text-sm shadow-[0_18px_50px_-25px_rgba(15,35,75,.25)] sm:p-7" wire:cloak>
             @if ($twoFactorEnabled)
                 <div class="space-y-4">
                     <div class="flex items-center gap-3">
-                        <flux:badge color="green">{{ __('Enabled') }}</flux:badge>
+                        <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">{{ __('Enabled') }}</span>
                     </div>
 
-                    <flux:text>
+                    <p class="leading-6 text-slate-500">
                         {{ __('With two-factor authentication enabled, you will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
-                    </flux:text>
+                    </p>
 
                     <livewire:settings.two-factor.⚡recovery-codes :$requiresConfirmation />
 
                     <div class="flex justify-start">
-                        <flux:button
-                            variant="danger"
-                            icon="shield-exclamation"
-                            icon:variant="outline"
-                            wire:click="disable"
-                        >
+                        <button type="button" class="rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700" wire:click="disable">
                             {{ __('Disable 2FA') }}
-                        </flux:button>
+                        </button>
                     </div>
                 </div>
             @else
                 <div class="space-y-4">
                     <div class="flex items-center gap-3">
-                        <flux:badge color="red">{{ __('Disabled') }}</flux:badge>
+                        <span class="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">{{ __('Disabled') }}</span>
                     </div>
 
-                    <flux:text variant="subtle">
+                    <p class="leading-6 text-slate-500">
                         {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
-                    </flux:text>
+                    </p>
 
-                    <flux:button
-                        variant="primary"
-                        icon="shield-check"
-                        icon:variant="outline"
-                        wire:click="enable"
-                    >
+                    <button type="button" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]" wire:click="enable">
                         {{ __('Enable 2FA') }}
-                    </flux:button>
+                    </button>
                 </div>
             @endif
         </div>
@@ -386,4 +377,5 @@ new class extends Component {
             @endif
         </div>
     </flux:modal>
+</div>
 </section>

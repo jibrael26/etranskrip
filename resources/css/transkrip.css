@@ -1,0 +1,305 @@
+[x-cloak] {
+    display: none !important;
+}
+
+.field-label {
+    display: grid;
+    gap: .5rem;
+    color: #475569;
+    font-size: .75rem;
+    font-weight: 700;
+}
+
+.modern-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    background: #f8fafc;
+    padding: .75rem .875rem;
+    color: #0f172a;
+    font-size: .875rem;
+    outline: none;
+    transition: .2s;
+}
+
+.modern-input::placeholder,
+.search-input::placeholder {
+    color: #94a3b8;
+}
+
+.modern-input::placeholder,
+.edit-input::placeholder {
+    font-weight: 400;
+}
+
+.modern-input:focus {
+    border-color: #ff862d;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 134, 45, .15);
+}
+
+.search-input {
+    width: 100%;
+    min-height: 2.75rem;
+    border: 1px solid #dbe3ee;
+    border-radius: .75rem;
+    background: white;
+    padding: .7rem 2.5rem;
+    color: #0f172a;
+    font-size: .875rem;
+    outline: none;
+    transition: .2s;
+}
+
+.search-input:focus {
+    border-color: #ff862d;
+    box-shadow: 0 0 0 3px rgba(255, 134, 45, .14);
+}
+
+.edit-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: .65rem;
+    background: #f8fafc;
+    padding: .6rem .7rem;
+    color: #0f172a;
+    font-size: .875rem;
+    outline: none;
+    transition: .2s;
+}
+
+.edit-input:focus {
+    border-color: #ff862d;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 134, 45, .12);
+}
+
+.summary-input {
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    background: #f8fafc;
+    padding: .65rem .75rem;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 800;
+    outline: none;
+    transition: .2s;
+}
+
+.summary-input:focus {
+    border-color: #ff862d;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 134, 45, .12);
+}
+
+.summary-input:disabled {
+    cursor: not-allowed;
+    opacity: .6;
+}
+
+.paper-folio {
+    box-sizing: border-box;
+    width: 8.5in;
+    height: 13in;
+    padding: 10mm 15mm;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, .3);
+    font-family: 'Times New Roman', serif;
+}
+
+.transcript-text-heading {
+    font-family: calibri, arial, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.transcript-text {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+.transcript-table {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11px;
+    row-gap: 3px;
+    line-height: 1.4;
+    border-width: .5px;
+}
+
+.transcript-column {
+    display: flex;
+    align-items: stretch;
+}
+
+.transcript-tables {
+    position: relative;
+    isolation: isolate;
+}
+
+.transcript-table-watermark {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    opacity: .11;
+    pointer-events: none;
+}
+
+.transcript-table,
+.transcript-table th,
+.transcript-table td {
+    border-width: .5px !important;
+    border-color: #000;
+}
+
+.transcript-table td,
+.transcript-table .semester-row-cell {
+    border-top: 0;
+    border-bottom: 0;
+}
+
+.transcript-table .ipk-summary-start td {
+    padding-top: 12px;
+}
+
+.ipk-summary-content {
+    display: inline-grid;
+    grid-template-columns: auto auto auto auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 2px;
+    white-space: nowrap;
+}
+
+.transcript-index {
+    border-width: .5px;
+    padding: 2px 6px;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.15;
+}
+
+.transcript-index-formula,
+.transcript-index-fraction {
+    font-family: 'Cambria Math';
+}
+
+.transcript-index-formula {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 2px;
+    font-size: 8px;
+}
+
+.transcript-index-fraction {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.15;
+}
+
+.transcript-index-value {
+    font-family: 'Cambria Math';
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.transcript-summary {
+    display: grid;
+    gap: 2px;
+    width: max-content;
+    padding: 0 26px;
+    text-align: left;
+}
+
+.transcript-summary-row {
+    display: grid;
+    grid-template-columns: 130px 12px max-content;
+    column-gap: 4px;
+    margin-top: 1px;
+    margin-left: 5px;
+    font-family: calibri, arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.transcript-summary-row-value,
+.transcript-summary-row-value-text {
+    font-family: calibri, arial, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.transcript-summary-row-value {
+    padding-left: 117px;
+    text-align: left;
+}
+
+.transcript-summary-row-value-text {
+    padding-left: 110px;
+}
+
+.transcript-sign {
+    display: grid;
+    justify-items: left;
+    padding-top: 50px;
+    padding-left: 15px;
+    margin-top: 10px;
+    font-family: calibri, arial, sans-serif;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.transcript-photo {
+    margin-top: 15px;
+    margin-left: 315px;
+    font-family: calibri, arial, sans-serif;
+    font-size: 10px;
+    line-height: 1.2;
+}
+
+@media print {
+    @page {
+        size: 8.5in 13in;
+        margin: 0;
+    }
+
+    body {
+        margin: 0;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .no-print,
+    nav,
+    header {
+        display: none !important;
+    }
+
+    .paper-preview {
+        display: block;
+        padding: 0;
+        overflow: visible;
+        background: white;
+    }
+
+    .paper-folio {
+        box-shadow: none;
+        align-items: center;
+        margin: 0 auto;
+        width: 8.5in;
+        height: 13in;
+        padding: 7mm;
+        padding-top: 0;
+        page-break-after: always;
+    }
+}

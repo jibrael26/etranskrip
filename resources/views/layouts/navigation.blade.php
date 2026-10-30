@@ -2,9 +2,11 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex h-[72px] items-center justify-between gap-6">
             <a href="{{ route('dashboard') }}" class="flex shrink-0 items-center gap-3" wire:navigate>
-                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-lg font-black text-[#ff862d] ring-1 ring-white/15">ET</span>
+                <span class="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
+                    <img src="{{ asset('images/logo-unima.png') }}" alt="Logo Universitas Negeri Manado" class="h-full w-full object-contain p-1">
+                </span>
                 <span class="hidden sm:block">
-                    <span class="block text-[10px] font-bold uppercase tracking-[0.25em] text-orange-200">Portal Akademik</span>
+                    <span class="block text-[10px] font-bold uppercase tracking-[0.25em] text-orange-200">Portal Akademik Teknik Informatika</span>
                     <span class="block text-lg font-extrabold tracking-tight">E-Transkrip</span>
                 </span>
             </a>

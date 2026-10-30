@@ -5,55 +5,40 @@
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-5">
             @csrf
 
             <!-- Email Address -->
-            <flux:input
-                name="email"
-                :label="__('Email address')"
-                :value="old('email')"
-                type="email"
-                required
-                autofocus
-                autocomplete="email"
-                placeholder="email@example.com"
-            />
+            <label class="grid gap-2 text-sm font-bold text-slate-600">
+                {{ __('Email address') }}
+                <input name="email" value="{{ old('email') }}" type="email" required autofocus autocomplete="email" placeholder="email@example.com" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#ff862d] focus:bg-white focus:ring-4 focus:ring-orange-100">
+                @error('email') <span class="text-xs font-medium text-red-600">{{ $message }}</span> @enderror
+            </label>
 
             <!-- Password -->
             <div class="relative">
-                <flux:input
-                    name="password"
-                    :label="__('Password')"
-                    type="password"
-                    required
-                    autocomplete="current-password"
-                    :placeholder="__('Password')"
-                    viewable
-                />
+                <label class="grid gap-2 text-sm font-bold text-slate-600">
+                    {{ __('Password') }}
+                    <input name="password" type="password" required autocomplete="current-password" placeholder="{{ __('Password') }}" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#ff862d] focus:bg-white focus:ring-4 focus:ring-orange-100">
+                    @error('password') <span class="text-xs font-medium text-red-600">{{ $message }}</span> @enderror
+                </label>
 
                 @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
+                    <a class="absolute end-0 top-0 text-xs font-bold text-[#ed6f24] hover:underline" href="{{ route('password.request') }}" wire:navigate>
                         {{ __('Forgot your password?') }}
-                    </flux:link>
+                    </a>
                 @endif
             </div>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
+            <label class="flex items-center gap-2 text-sm text-slate-600"><input name="remember" type="checkbox" @checked(old('remember')) class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]"> {{ __('Remember me') }}</label>
 
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+                <button type="submit" class="w-full rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]" data-test="login-button">
                     {{ __('Log in') }}
-                </flux:button>
+                </button>
             </div>
         </form>
 
-        @if (Route::has('register'))
-            <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
-                <span>{{ __('Don\'t have an account?') }}</span>
-                <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
-            </div>
-        @endif
     </div>
 </x-layouts::auth>

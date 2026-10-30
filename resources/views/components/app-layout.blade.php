@@ -8,6 +8,9 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
+    <link rel="icon" href="{{ asset('images/logo-unima.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo-unima.png') }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 

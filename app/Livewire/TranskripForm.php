@@ -19,6 +19,10 @@ class TranskripForm extends Component
         'no_transkrip' => '0033/S1/2026',
         'no_ijazah' => '',
         'tgl_lulus' => '',
+        'kementerian' => 'Kementerian Pendidikan Tinggi, Sains, dan Teknologi',
+        'universitas' => 'Universitas Negeri Manado',
+        'fakultas' => 'Fakultas Teknik',
+        'alamat' => 'Alamat: Kampus UNIMA Tondano 95618 Telepon: (0431) 322543, Fax: (0431) 322543',
     ];
 
     // Data Pejabat Penandatangan
@@ -45,6 +49,11 @@ class TranskripForm extends Component
 
     public function mount(?Transcript $transcript = null)
     {
+        if (! $transcript?->exists) {
+            $this->header = array_merge($this->header, auth()->user()->transcript_header ?? []);
+            $this->pejabat = array_merge($this->pejabat, auth()->user()->transcript_signatory ?? []);
+        }
+
         if ($transcript?->exists) {
             abort_unless($transcript->user_id === auth()->id(), 404);
 

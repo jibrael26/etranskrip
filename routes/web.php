@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Livewire\TranskripForm;
+use App\Livewire\PengaturanTranskrip;
 
 Route::get('/', function () {
     return view('welcome');
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 2. Transkrip (Aplikasi Utama Anda)
     Route::get('/transkrip', TranskripForm::class)->name('transkrip');
     Route::get('/transkrip/{transcript}', TranskripForm::class)->name('transkrip.edit');
+    Route::get('/pengaturan-transkrip', PengaturanTranskrip::class)->name('transkrip.settings');
     Route::get('/history-transkrip', function () {
         $transcripts = auth()->user()->transcripts()->latest()->paginate(12);
 

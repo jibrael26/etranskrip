@@ -110,17 +110,38 @@
 
 .transcript-header {
     position: relative;
-    min-height: 27mm;
+    min-height: 36mm;
 }
 
 .transcript-header-content {
     position: absolute;
-    inset: 0;
+    inset: 0 5mm 0 20mm;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
+    gap: 0.8mm;
+}
+
+.transcript-header-ministry {
+    max-width: 140mm;
+    font-size: 18pt;
+    font-weight: 400;
+    line-height: 1.15;
+}
+
+.transcript-header-university,
+.transcript-header-faculty {
+    font-size: 16pt;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.transcript-header-address {
+    font-size: 9pt;
+    font-weight: 400;
+    line-height: 1.15;
 }
 
 .transcript-logo {
@@ -129,7 +150,7 @@
 
 .transcript-text-heading {
     font-family: calibri, arial, sans-serif;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     line-height: 1;
 }
@@ -235,6 +256,7 @@
     display: grid;
     gap: 2px;
     width: max-content;
+    margin-top: -1px;
     padding: 0 26px;
     text-align: left;
 }
@@ -274,16 +296,16 @@
     padding-left: 15px;
     margin-top: 10px;
     font-family: calibri, arial, sans-serif;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
     text-align: left;
 }
 
 .transcript-photo {
     margin-top: 15px;
-    margin-left: 315px;
+    margin-left: 330px;
     font-family: calibri, arial, sans-serif;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.2;
 }
 

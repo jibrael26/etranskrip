@@ -1,6 +1,30 @@
-<div x-data="{
+<div
+    @keydown.escape.window="closeConfirmation()"
+    x-data="{
     tableOpen: true,
     showAll: false,
+    confirmationOpen: false,
+    confirmationTitle: '',
+    confirmationMessage: '',
+    pendingAction: null,
+    pendingIndex: null,
+    openConfirmation(title, message, action) {
+        this.confirmationTitle = title;
+        this.confirmationMessage = message;
+        this.pendingAction = action;
+        this.confirmationOpen = true;
+    },
+    closeConfirmation() {
+        this.confirmationOpen = false;
+        this.pendingAction = null;
+    },
+    confirmAction() {
+        const action = this.pendingAction;
+        this.closeConfirmation();
+        if (action === 'save') this.$wire.simpanTranskrip();
+        if (action === 'delete') this.$wire.hapusMataKuliah(this.pendingIndex);
+        if (action === 'print') window.print();
+    },
     visibleLimit: 12,
     searchTerm: '',
     filterPaket: '',
@@ -129,11 +153,11 @@
                     <textarea @paste.prevent="parsePaste($event)" class="h-32 w-full resize-none rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white outline-none placeholder:text-slate-400 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/30" placeholder="Klik lalu tekan Ctrl + V untuk menempel data Excel..."></textarea>
                     <p class="mt-3 text-xs leading-5 text-slate-300"><span class="font-bold text-orange-300">Tips:</span> Nama, Total SKS, Paket Sem., Bobot Nilai, dan Kode Nilai akan dideteksi otomatis dari tabel Excel.</p>
                     <div class="mt-6 grid gap-2 sm:grid-cols-2">
-                        <button type="button" wire:click="simpanTranskrip" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
+                        <button type="button" @click="openConfirmation('Simpan transkrip?', 'Data transkrip akan disimpan ke dalam history Anda.', 'save')" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
                             <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
                             <span wire:loading wire:target="simpanTranskrip">Menyimpan...</span>
                         </button>
-                        <button type="button" onclick="window.print()" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
+                        <button type="button" @click="openConfirmation('Cetak transkrip?', 'Pastikan data yang tampil sudah benar sebelum mencetak dokumen.', 'print')" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
                             Cetak PDF <span aria-hidden="true">→</span>
                         </button>
                     </div>
@@ -240,7 +264,7 @@
                                             </select>
                                         </td>
                                         <td class="px-5 py-3.5 text-right">
-                                            <button type="button" wire:click="hapusMataKuliah({{ $index }})" class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Hapus baris" aria-label="Hapus baris">
+                                            <button type="button" @click="pendingIndex = {{ $index }}; openConfirmation('Hapus mata kuliah?', 'Baris mata kuliah ini akan dihapus dari transkrip.', 'delete')" class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Hapus baris" aria-label="Hapus baris">
                                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 7h12m-9 0V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m-7 0 .7 12.2a1.5 1.5 0 0 0 1.5 1.3h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7M10 11v6m4-6v6"/></svg>
                                             </button>
                                         </td>
@@ -312,11 +336,10 @@
             </div>
 
             <div class="transcript-header-content text-center">
-                <h3 class="text-sm font-bold uppercase">Kementerian Pendidikan Tinggi, Sains, dan Teknologi</h3>
-                <h1 class="text-xl font-bold uppercase">UNIVERSITAS NEGERI MANADO</h1>
-                <h2 class="text-lg font-bold uppercase">FAKULTAS TEKNIK</h2>
-                <p class="text-xs italic">Alamat: Kampus UNIMA Tondano 95618 Telepon: (0431) 322543, Fax: (0431) 322543
-                </p>
+                <h3 class="transcript-header-ministry uppercase">{{ $header['kementerian'] }}</h3>
+                <h1 class="transcript-header-university uppercase">{{ $header['universitas'] }}</h1>
+                <h2 class="transcript-header-faculty uppercase">{{ $header['fakultas'] }}</h2>
+                <p class="transcript-header-address">{{ $header['alamat'] }}</p>
             </div>
         </div>
 
@@ -497,7 +520,7 @@
             </div>
         </div>
 
-        <div class="mt-2 pt-2 flex text-xs">
+        <div class="mt-0 pt-0 flex text-xs">
             <div class=" pr-7">
                 <div class="transcript-summary font-bold">
                     <div class="transcript-summary-row">
@@ -531,6 +554,27 @@
             </div>
         </div>
 
+    </div>
+
+    <div
+        x-show="confirmationOpen"
+        x-cloak
+        x-transition.opacity
+        class="no-print fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transcript-confirmation-title"
+        @click.self="closeConfirmation()"
+    >
+        <div x-show="confirmationOpen" x-transition class="w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-7">
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-xl text-[#ff862d]" aria-hidden="true">!</div>
+            <h2 id="transcript-confirmation-title" class="mt-5 text-xl font-black text-[#0d1b3e]" x-text="confirmationTitle"></h2>
+            <p class="mt-2 text-sm leading-6 text-slate-500" x-text="confirmationMessage"></p>
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" @click="closeConfirmation()" class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">Batal</button>
+                <button type="button" @click="confirmAction()" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#f4771f]">Ya, Lanjutkan</button>
+            </div>
+        </div>
     </div>
 
 </div>

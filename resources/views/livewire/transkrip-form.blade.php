@@ -389,23 +389,24 @@
         </div>
 
         <div class="transcript-text relative left-[15mm] mx-auto mb-2 grid w-[120mm] grid-cols-[45mm_0.75rem_1fr] gap-y-0.5 text-xs">
-            <div>Nama</div>
+            <div class="uppercase">Nama</div>
             <div class="left-0">:</div>
             <div class="uppercase">{{ $header['nama'] }}</div>
 
-            <div>Tempat / Tanggal Lahir</div>
+
+            <div class="uppercase">Tempat / Tanggal Lahir</div>
             <div class="left-0">:</div>
             <div class="uppercase">{{ $header['ttl'] }}</div>
 
-            <div>NIM</div>
+            <div class="uppercase" >NIM</div>
             <div class="left-0">:</div>
-            <div>{{ $header['nim'] }}</div>
+            <div class="uppercase">{{ $header['nim'] }}</div>
 
-            <div>Nama &amp; Jenjang Program Studi</div>
+            <div class="uppercase">Nama &amp; Jenjang Program Studi</div>
             <div class="left-0">:</div>
             <div class="uppercase">{{ $header['prodi'] }}</div>
 
-            <div>Tanggal Lulus</div>
+            <div class="uppercase">Tanggal Lulus</div>
             <div class="left-0">:</div>
             <div class="uppercase">{{ $header['tgl_lulus'] }}</div>
         </div>

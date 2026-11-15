@@ -103,6 +103,15 @@ class TranskripForm extends Component
 
     public function simpanTranskrip(): void
     {
+        if ($this->adaNilaiDiBawahC()) {
+            $this->addError(
+                'mataKuliah',
+                'Transkrip tidak dapat disimpan. Perbaiki nilai D dengan bobot maksimal 1,50 atau nilai E dengan bobot 0,00 terlebih dahulu.'
+            );
+
+            return;
+        }
+
         $this->validate([
             'header.nama' => ['required', 'string', 'max:255'],
             'header.nim' => ['required', 'string', 'max:100'],
@@ -133,6 +142,20 @@ class TranskripForm extends Component
 
         $this->transcriptId = $transcript->id;
         $this->savedMessage = 'Transkrip berhasil disimpan.';
+    }
+
+    public function cetakTranskrip(): void
+    {
+        if ($this->adaNilaiDiBawahC()) {
+            $this->addError(
+                'mataKuliah',
+                'Transkrip tidak dapat dicetak. Perbaiki nilai D dengan bobot maksimal 1,50 atau nilai E dengan bobot 0,00 terlebih dahulu.'
+            );
+
+            return;
+        }
+
+        $this->dispatch('print-transcript');
     }
 
     // Fungsi dijalankan setiap kali data mataKuliah berubah (setelah paste)
@@ -214,6 +237,24 @@ class TranskripForm extends Component
         unset($this->mataKuliah[$index]);
         $this->mataKuliah = array_values($this->mataKuliah);
         $this->hitungIPK();
+    }
+
+    public function isNilaiDiBawahC(array $mataKuliah): bool
+    {
+        $nilai = strtoupper(trim((string) ($mataKuliah['nilai'] ?? '')));
+        $bobot = str_replace(',', '.', (string) ($mataKuliah['bobot'] ?? ''));
+        $bobot = is_numeric($bobot) ? (float) $bobot : null;
+
+        return ($nilai === 'D' && $bobot !== null && $bobot <= 1.50)
+            || ($nilai === 'E' && $bobot === 0.00);
+    }
+
+    private function adaNilaiDiBawahC(): bool
+    {
+        return count(array_filter(
+            $this->mataKuliah,
+            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
+        )) > 0;
     }
 
     public function hitungIPK()
@@ -305,11 +346,17 @@ class TranskripForm extends Component
             }
         }
 
+        $peringatanNilai = array_values(array_filter(
+            $mataKuliah,
+            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
+        ));
+
         return view('livewire.transkrip-form', [
             'semesterKiri' => $semesterKiri,
             'semesterKanan' => $semesterKanan,
             'semesterLainnya' => $semesterLainnya,
             'hasMataKuliah' => count($mataKuliah) > 0,
+            'peringatanNilai' => $peringatanNilai,
         ])->layout('components.app-layout');
     }
 }

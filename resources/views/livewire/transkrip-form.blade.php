@@ -1,5 +1,6 @@
 <div
     @keydown.escape.window="closeConfirmation()"
+    @print-transcript.window="window.print()"
     x-data="{
     tableOpen: true,
     showAll: false,
@@ -8,6 +9,7 @@
     confirmationMessage: '',
     pendingAction: null,
     pendingIndex: null,
+    hasInvalidGrades: @json(count($peringatanNilai) > 0),
     openConfirmation(title, message, action) {
         this.confirmationTitle = title;
         this.confirmationMessage = message;
@@ -20,10 +22,18 @@
     },
     confirmAction() {
         const action = this.pendingAction;
+
+        if (['save', 'print'].includes(action) && this.hasInvalidGrades) {
+            this.confirmationTitle = 'TINDAKAN DIBLOKIR';
+            this.confirmationMessage = 'Masih ada nilai di bawah C. Perbaiki semua baris berwarna merah terlebih dahulu. Transkrip tidak dapat disimpan atau dicetak sebelum nilai diperbaiki.';
+            this.pendingAction = null;
+            return;
+        }
+
         this.closeConfirmation();
         if (action === 'save') this.$wire.simpanTranskrip();
         if (action === 'delete') this.$wire.hapusMataKuliah(this.pendingIndex);
-        if (action === 'print') window.print();
+        if (action === 'print') this.$wire.cetakTranskrip();
     },
     visibleLimit: 12,
     searchTerm: '',
@@ -157,7 +167,7 @@
                             <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
                             <span wire:loading wire:target="simpanTranskrip">Menyimpan...</span>
                         </button>
-                        <button type="button" @click="openConfirmation('Cetak transkrip?', 'Pastikan data yang tampil sudah benar sebelum mencetak dokumen.', 'print')" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
+                        <button type="button" @click="openConfirmation('Cetak transkrip?', 'Pastikan data yang tampil sudah benar sebelum mencetak dokumen. Jika masih ada nilai D atau E yang terdeteksi, pencetakan akan diblokir.', 'print')" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
                             Cetak PDF <span aria-hidden="true">→</span>
                         </button>
                     </div>
@@ -218,6 +228,27 @@
                             </select>
                             <button type="button" @click="showAll = !showAll" class="w-full whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-[#34415f] transition hover:border-[#ff862d] hover:text-[#ed6f24] sm:w-auto" x-text="showAll ? 'Tampilkan sebagian' : 'Tampilkan semua'"></button>
                         </div>
+                        @if (count($peringatanNilai) > 0)
+                            <div class="mx-4 mt-4 animate-pulse rounded-xl border-2 border-red-500 bg-red-50 px-4 py-4 text-sm text-red-900 shadow-lg shadow-red-200/70" role="alert" aria-live="assertive">
+                                <div class="flex items-start gap-3">
+                                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-lg font-black text-white" aria-hidden="true">!</span>
+                                    <div>
+                                        <p class="font-black uppercase tracking-wide text-red-700">PERINGATAN KERAS: NILAI DI BAWAH C</p>
+                                        <p class="mt-1 font-semibold">
+                                            {{ count($peringatanNilai) }} mata kuliah harus diperbaiki sebelum transkrip dapat disimpan atau dicetak.
+                                        </p>
+                                        <p class="mt-1 text-xs font-medium">
+                                            Kriteria: kode D dengan bobot maksimal 1,50 atau kode E dengan bobot 0,00.
+                                        </p>
+                                        <ul class="mt-2 list-inside list-disc text-xs font-bold">
+                                            @foreach ($peringatanNilai as $mk)
+                                                <li>{{ $mk['nama'] ?: 'Mata kuliah tanpa nama' }} — {{ $mk['nilai'] }} ({{ number_format((float) $mk['bobot'], 2, ',', '') }})</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                         <div class="max-h-[620px] overflow-auto">
                         <table class="w-full min-w-[1020px] text-left text-sm">
                             <thead class="sticky top-0 z-10 bg-[#f1f5f9] text-[11px] uppercase tracking-wider text-slate-500 shadow-sm">
@@ -234,7 +265,11 @@
                             </thead>
                             <tbody data-course-body class="divide-y divide-slate-100">
                                 @foreach ($mataKuliah as $index => $mk)
-                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" class="odd:bg-white even:bg-slate-50/60 transition hover:bg-orange-50">
+                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" @class([
+                                        'transition hover:bg-orange-50',
+                                        'bg-red-50 ring-2 ring-inset ring-red-300' => $this->isNilaiDiBawahC($mk),
+                                        'odd:bg-white even:bg-slate-50/60' => ! $this->isNilaiDiBawahC($mk),
+                                    ])>
                                         <td class="px-5 py-3.5">
                                             <input type="text" wire:model.live="mataKuliah.{{ $index }}.no" class="edit-input text-center" aria-label="Nomor mata kuliah">
                                         </td>
@@ -262,6 +297,9 @@
                                                     <option value="{{ $nilai }}">{{ $nilai }}</option>
                                                 @endforeach
                                             </select>
+                                            @if ($this->isNilaiDiBawahC($mk))
+                                                <span class="mt-1 block text-center text-[10px] font-black uppercase text-red-600">Perlu diperbaiki</span>
+                                            @endif
                                         </td>
                                         <td class="px-5 py-3.5 text-right">
                                             <button type="button" @click="pendingIndex = {{ $index }}; openConfirmation('Hapus mata kuliah?', 'Baris mata kuliah ini akan dihapus dari transkrip.', 'delete')" class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Hapus baris" aria-label="Hapus baris">
@@ -567,12 +605,12 @@
         @click.self="closeConfirmation()"
     >
         <div x-show="confirmationOpen" x-transition class="w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-7">
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-50 text-xl text-[#ff862d]" aria-hidden="true">!</div>
+            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-xl font-black text-red-600" aria-hidden="true">!</div>
             <h2 id="transcript-confirmation-title" class="mt-5 text-xl font-black text-[#0d1b3e]" x-text="confirmationTitle"></h2>
             <p class="mt-2 text-sm leading-6 text-slate-500" x-text="confirmationMessage"></p>
             <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button type="button" @click="closeConfirmation()" class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">Batal</button>
-                <button type="button" @click="confirmAction()" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#f4771f]">Ya, Lanjutkan</button>
+                <button type="button" x-show="pendingAction" @click="confirmAction()" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#f4771f]">Ya, Lanjutkan</button>
             </div>
         </div>
     </div>

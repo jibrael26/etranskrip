@@ -9,17 +9,11 @@
     confirmationTitle: '',
     confirmationMessage: '',
     pendingAction: null,
-    pendingIndex: null,
     hasInvalidGrades: @json(count($peringatanNilai) > 0),
     reviewItems: @js($peringatanNilai),
     reviewMode: false,
     reviewConfirmed: false,
     reviewAcknowledged: @json($nilaiKritisDitinjau),
-    init() {
-        if (this.hasInvalidGrades && !this.reviewAcknowledged) {
-            this.openReviewModal();
-        }
-    },
     handleCriticalGrades(items) {
         this.reviewItems = items || [];
         this.hasInvalidGrades = this.reviewItems.length > 0;
@@ -60,8 +54,12 @@
     },
     runPendingAction(action) {
         if (action === 'save') this.$wire.simpanTranskrip();
-        if (action === 'delete') this.$wire.hapusMataKuliah(this.pendingIndex);
         if (action === 'print') this.$wire.cetakTranskrip();
+    },
+    confirmDelete(index) {
+        if (window.confirm('Hapus mata kuliah ini dari transkrip?')) {
+            this.$wire.hapusMataKuliah(index);
+        }
     },
     confirmAction() {
         const action = this.pendingAction;
@@ -115,24 +113,14 @@
             .some((row) => this.rowMatches(row));
     },
     parsePaste(e) {
-        let pastedData = e.clipboardData.getData('text');
-        let rows = pastedData.split('\n');
-        let tempMataKuliah = [];
+        const rows = e.clipboardData.getData('text').split('\n');
         const validGrades = ['A', 'B', 'C', 'D', 'E'];
+        const tempMataKuliah = [];
 
         rows.forEach((row) => {
-            // Pecah berdasarkan TAB (Standar Excel)
-            let cols = row.split('\t').map((col) => col.trim().replace(/^\uFEFF/, '').replace(/\r$/, ''));
-
-            // LOGIKA PARSING SESUAI GAMBAR EXCEL ANDA:
-            // Excel Anda punya banyak kolom. Kita ambil berdasarkan index:
-            // Index 0 = No, 2 = Nama, 3 = Total SKS, 5 = Paket Sem.,
-            // Index 4 = Kode W/P (Wajib/Pilihan),
-            // 8 = Bobot Nilai (3.00, 4.00, dan seterusnya),
-            // 9 = Kode Nilai (A, B, C, dan seterusnya).
+            const cols = row.split('\t').map((col) => col.trim().replace(/^\uFEFF/, '').replace(/\r$/, ''));
 
             if (cols.length >= 10 && cols[0].toLowerCase() !== 'no') {
-                // Cari kode nilai dari isinya agar tetap terbaca saat kolom Excel bergeser.
                 const nilaiIndex = cols.reduce((lastIndex, col, index) => {
                     return validGrades.includes(col.toUpperCase()) ? index : lastIndex;
                 }, -1);
@@ -140,6 +128,7 @@
                 const bobotIndex = nilaiIndex > 0
                     ? [...Array(nilaiIndex).keys()].reverse().find((index) => {
                         const value = Number.parseFloat(cols[index].replace(',', '.'));
+
                         return Number.isFinite(value) && value >= 0 && value <= 4;
                     })
                     : -1;
@@ -151,7 +140,7 @@
                     jenis: ['W', 'P'].includes((cols[4] || '').toUpperCase()) ? cols[4].toUpperCase() : '',
                     paket: cols[5].trim(),
                     bobot: bobotIndex >= 0 ? cols[bobotIndex].replace(',', '.') : '',
-                    nilai
+                    nilai,
                 });
             }
         });
@@ -218,7 +207,7 @@
                         <p class="mt-2 text-sm leading-6 text-slate-300">Salin tabel dari Excel, lalu tempel di area berikut.</p>
                     </div>
                     <textarea @paste.prevent="parsePaste($event)" class="h-32 w-full resize-none rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white outline-none placeholder:text-slate-400 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/30" placeholder="Klik lalu tekan Ctrl + V untuk menempel data Excel..."></textarea>
-                    <p class="mt-3 text-xs leading-5 text-slate-300"><span class="font-bold text-orange-300">Tips:</span> Nama, Total SKS, Paket Sem., Bobot Nilai, dan Kode Nilai akan dideteksi otomatis dari tabel Excel.</p>
+                    <p class="mt-3 text-xs leading-5 text-slate-300"><span class="font-bold text-orange-300">Tips:</span> Gunakan format kolom impor yang sama seperti template Excel aplikasi agar data terbaca dengan benar.</p>
                     <div class="mt-6 grid gap-2 sm:grid-cols-2">
                         <button type="button" @click="openConfirmation('Simpan transkrip?', 'Data transkrip akan disimpan ke dalam history Anda.', 'save')" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
                             <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
@@ -321,7 +310,7 @@
                                 </tr>
                             </thead>
                             <tbody data-course-body class="divide-y divide-slate-100">
-                                @foreach ($mataKuliah as $index => $mk)
+                                @foreach ($mataKuliahPeriksa as $index => $mk)
                                     <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" @class([
                                         'transition hover:bg-orange-50',
                                         'bg-red-50 ring-2 ring-inset ring-red-300' => $this->isNilaiDiBawahC($mk),
@@ -359,9 +348,15 @@
                                             @endif
                                         </td>
                                         <td class="px-5 py-3.5 text-right">
-                                            <button type="button" @click="pendingIndex = {{ $index }}; openConfirmation('Hapus mata kuliah?', 'Baris mata kuliah ini akan dihapus dari transkrip.', 'delete')" class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Hapus baris" aria-label="Hapus baris">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 7h12m-9 0V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m-7 0 .7 12.2a1.5 1.5 0 0 0 1.5 1.3h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7M10 11v6m4-6v6"/></svg>
-                                            </button>
+                                            @if (strtoupper(trim((string) ($mk['jenis'] ?? ''))) === 'W')
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400" title="Mata kuliah wajib tidak dapat dihapus">
+                                                    <span aria-hidden="true">🔒</span> Wajib
+                                                </span>
+                                            @else
+                                                <button type="button" @click="confirmDelete({{ $index }})" class="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600" title="Hapus baris" aria-label="Hapus baris">
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 7h12m-9 0V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7m-7 0 .7 12.2a1.5 1.5 0 0 0 1.5 1.3h3.6a1.5 1.5 0 0 0 1.5-1.3L16 7M10 11v6m4-6v6"/></svg>
+                                                </button>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach

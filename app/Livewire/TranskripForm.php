@@ -270,10 +270,23 @@ class TranskripForm extends Component
             return;
         }
 
+        if (strtoupper(trim((string) ($this->mataKuliah[$index]['jenis'] ?? ''))) === 'W') {
+            $this->addError('mataKuliah', 'Mata kuliah wajib tidak dapat dihapus, tetapi datanya masih dapat diedit.');
+
+            return;
+        }
+
+        $mataKuliahKritisDihapus = $this->isNilaiDiBawahC($this->mataKuliah[$index]);
         unset($this->mataKuliah[$index]);
         $this->mataKuliah = array_values($this->mataKuliah);
-        $this->nilaiKritisDitinjau = false;
+        if ($mataKuliahKritisDihapus) {
+            $this->nilaiKritisDitinjau = false;
+        }
         $this->hitungIPK();
+
+        if ($mataKuliahKritisDihapus) {
+            $this->dispatch('critical-grades-detected', items: $this->daftarNilaiKritis());
+        }
     }
 
     public function isNilaiDiBawahC(array $mataKuliah): bool
@@ -377,6 +390,13 @@ class TranskripForm extends Component
     public function render()
     {
         $mataKuliah = array_values($this->mataKuliah);
+        $mataKuliahPeriksa = array_filter(
+            $mataKuliah,
+            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
+        ) + array_filter(
+            $mataKuliah,
+            fn (array $mk): bool => ! $this->isNilaiDiBawahC($mk)
+        );
         $semesterKiri = array_fill(1, 4, []);
         $semesterKanan = array_fill(5, 4, []);
         $semesterLainnya = [];
@@ -400,6 +420,7 @@ class TranskripForm extends Component
             'semesterKiri' => $semesterKiri,
             'semesterKanan' => $semesterKanan,
             'semesterLainnya' => $semesterLainnya,
+            'mataKuliahPeriksa' => $mataKuliahPeriksa,
             'hasMataKuliah' => count($mataKuliah) > 0,
             'peringatanNilai' => $peringatanNilai,
         ])->layout('components.app-layout');

@@ -8,7 +8,10 @@ use Livewire\Component;
 class TranskripForm extends Component
 {
     public ?int $transcriptId = null;
+
     public string $savedMessage = '';
+
+    public array $style = [];
 
     // Data Mahasiswa & Dokumen (Sesuai PDF)
     public $header = [
@@ -38,20 +41,34 @@ class TranskripForm extends Component
 
     // Variabel Hitungan
     public $totalSks = 0;
+
     public $totalBobot = 0;
+
     public $ipk = 0.00;
+
     public $komprehensif = 0.00;
+
     public $nilaiYudisium = 0.00;
+
     public $predikat = '';
+
     public $predikatManual = false;
+
     public $ringkasanManual = false;
+
     public $yudisiumManual = false;
+
+    public bool $nilaiKritisDitinjau = false;
 
     public function mount(?Transcript $transcript = null)
     {
         if (! $transcript?->exists) {
             $this->header = array_merge($this->header, auth()->user()->transcript_header ?? []);
             $this->pejabat = array_merge($this->pejabat, auth()->user()->transcript_signatory ?? []);
+            $this->style = array_replace_recursive(
+                $this->defaultStyle(),
+                auth()->user()->transcript_style ?? []
+            );
         }
 
         if ($transcript?->exists) {
@@ -60,6 +77,7 @@ class TranskripForm extends Component
             $this->transcriptId = $transcript->id;
             $this->header = array_merge($this->header, $transcript->header);
             $this->pejabat = array_merge($this->pejabat, $transcript->pejabat);
+            $this->style = array_replace_recursive($this->defaultStyle(), $transcript->style ?? []);
             $this->mataKuliah = $transcript->mata_kuliah;
             $this->totalSks = round($transcript->total_sks);
             $this->totalBobot = round($transcript->total_bobot);
@@ -103,10 +121,10 @@ class TranskripForm extends Component
 
     public function simpanTranskrip(): void
     {
-        if ($this->adaNilaiDiBawahC()) {
+        if ($this->adaNilaiDiBawahC() && ! $this->nilaiKritisDitinjau) {
             $this->addError(
                 'mataKuliah',
-                'Transkrip tidak dapat disimpan. Perbaiki nilai D dengan bobot maksimal 1,50 atau nilai E dengan bobot 0,00 terlebih dahulu.'
+                'Transkrip belum dapat disimpan. Tinjau nilai D dengan bobot maksimal 1,10 atau nilai E dengan bobot 0,00 terlebih dahulu.'
             );
 
             return;
@@ -131,6 +149,7 @@ class TranskripForm extends Component
             'student_nim' => $this->header['nim'],
             'header' => $this->header,
             'pejabat' => $this->pejabat,
+            'style' => $this->style,
             'mata_kuliah' => array_values($this->mataKuliah),
             'total_sks' => $this->totalSks,
             'total_bobot' => $this->totalBobot,
@@ -146,10 +165,10 @@ class TranskripForm extends Component
 
     public function cetakTranskrip(): void
     {
-        if ($this->adaNilaiDiBawahC()) {
+        if ($this->adaNilaiDiBawahC() && ! $this->nilaiKritisDitinjau) {
             $this->addError(
                 'mataKuliah',
-                'Transkrip tidak dapat dicetak. Perbaiki nilai D dengan bobot maksimal 1,50 atau nilai E dengan bobot 0,00 terlebih dahulu.'
+                'Transkrip belum dapat dicetak. Tinjau nilai D dengan bobot maksimal 1,10 atau nilai E dengan bobot 0,00 terlebih dahulu.'
             );
 
             return;
@@ -158,10 +177,26 @@ class TranskripForm extends Component
         $this->dispatch('print-transcript');
     }
 
+    public function konfirmasiPeninjauan(): void
+    {
+        if ($this->adaNilaiDiBawahC()) {
+            $this->nilaiKritisDitinjau = true;
+        }
+    }
+
     // Fungsi dijalankan setiap kali data mataKuliah berubah (setelah paste)
     public function updatedMataKuliah()
     {
+        $this->nilaiKritisDitinjau = false;
         $this->hitungIPK();
+    }
+
+    public function imporMataKuliah(array $mataKuliah): void
+    {
+        $this->mataKuliah = array_values($mataKuliah);
+        $this->nilaiKritisDitinjau = false;
+        $this->hitungIPK();
+        $this->dispatch('critical-grades-detected', items: $this->daftarNilaiKritis());
     }
 
     public function updatedRingkasanManual(): void
@@ -215,6 +250,7 @@ class TranskripForm extends Component
 
     public function tambahMataKuliah(): void
     {
+        $this->nilaiKritisDitinjau = false;
         $this->mataKuliah[] = [
             'no' => (string) (count($this->mataKuliah) + 1),
             'nama' => '',
@@ -236,6 +272,7 @@ class TranskripForm extends Component
 
         unset($this->mataKuliah[$index]);
         $this->mataKuliah = array_values($this->mataKuliah);
+        $this->nilaiKritisDitinjau = false;
         $this->hitungIPK();
     }
 
@@ -245,16 +282,21 @@ class TranskripForm extends Component
         $bobot = str_replace(',', '.', (string) ($mataKuliah['bobot'] ?? ''));
         $bobot = is_numeric($bobot) ? (float) $bobot : null;
 
-        return ($nilai === 'D' && $bobot !== null && $bobot <= 1.50)
+        return ($nilai === 'D' && $bobot !== null && $bobot <= 1.10)
             || ($nilai === 'E' && $bobot === 0.00);
     }
 
     private function adaNilaiDiBawahC(): bool
     {
-        return count(array_filter(
+        return count($this->daftarNilaiKritis()) > 0;
+    }
+
+    private function daftarNilaiKritis(): array
+    {
+        return array_values(array_filter(
             $this->mataKuliah,
             fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
-        )) > 0;
+        ));
     }
 
     public function hitungIPK()
@@ -321,10 +363,15 @@ class TranskripForm extends Component
 
     private function perbaruiPredikat(): void
     {
-        if ($this->ipk >= 3.51) $this->predikat = 'Pujian';
-        elseif ($this->ipk >= 3.01) $this->predikat = 'Sangat Memuaskan';
-        elseif ($this->ipk >= 2.76) $this->predikat = 'Memuaskan';
-        else $this->predikat = '-';
+        if ($this->ipk >= 3.51) {
+            $this->predikat = 'Pujian';
+        } elseif ($this->ipk >= 3.01) {
+            $this->predikat = 'Sangat Memuaskan';
+        } elseif ($this->ipk >= 2.76) {
+            $this->predikat = 'Memuaskan';
+        } else {
+            $this->predikat = '-';
+        }
     }
 
     public function render()
@@ -344,12 +391,10 @@ class TranskripForm extends Component
             } else {
                 $semesterLainnya[] = $mk;
             }
+
         }
 
-        $peringatanNilai = array_values(array_filter(
-            $mataKuliah,
-            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
-        ));
+        $peringatanNilai = $this->daftarNilaiKritis();
 
         return view('livewire.transkrip-form', [
             'semesterKiri' => $semesterKiri,
@@ -358,5 +403,67 @@ class TranskripForm extends Component
             'hasMataKuliah' => count($mataKuliah) > 0,
             'peringatanNilai' => $peringatanNilai,
         ])->layout('components.app-layout');
+    }
+
+    public function styleAttribute(string $section, string $field): string
+    {
+        $style = $this->style[$section][$field] ?? [];
+        $fontFamily = in_array($style['font_family'] ?? '', ['Calibri', 'Arial', 'Times New Roman', 'Georgia', 'Cambria Math'], true)
+            ? $style['font_family']
+            : 'Calibri';
+        $fontSize = max(8, min(24, (int) ($style['font_size'] ?? 12)));
+        $fontWeight = in_array((int) ($style['font_weight'] ?? 400), [400, 700], true)
+            ? (int) $style['font_weight']
+            : 400;
+        $align = in_array($style['align'] ?? '', ['left', 'center', 'right'], true)
+            ? $style['align']
+            : 'center';
+
+        return sprintf(
+            'font-family: "%s"; font-size: %dpt; font-weight: %d; font-style: %s; text-decoration: %s; text-align: %s;',
+            $fontFamily,
+            $fontSize,
+            $fontWeight,
+            ! empty($style['italic']) ? 'italic' : 'normal',
+            ! empty($style['underline']) ? 'underline' : 'none',
+            $align,
+        );
+    }
+
+    private function defaultStyle(): array
+    {
+        $style = fn (int $fontSize, int $fontWeight, bool $underline = false, string $fontFamily = 'Calibri', string $align = 'center'): array => [
+            'font_family' => $fontFamily,
+            'font_size' => $fontSize,
+            'font_weight' => $fontWeight,
+            'italic' => false,
+            'underline' => $underline,
+            'align' => $align,
+        ];
+
+        return [
+            'header' => [
+                'kementerian' => $style(18, 400, false, 'Times New Roman'),
+                'universitas' => $style(16, 700, false, 'Times New Roman'),
+                'fakultas' => $style(16, 700, false, 'Times New Roman'),
+                'alamat' => $style(9, 400, false, 'Times New Roman'),
+            ],
+            'pejabat' => [
+                'tgl_cetak' => $style(9, 700, false, 'Calibri', 'left'),
+                'jabatan' => $style(9, 700, false, 'Calibri', 'left'),
+                'nama' => $style(9, 700, true, 'Calibri', 'left'),
+                'nip' => $style(9, 700, false, 'Calibri', 'left'),
+            ],
+            'content' => [
+                'title' => $style(10, 700, false, 'Calibri', 'center'),
+                'document_meta' => $style(8, 400, false, 'Calibri', 'center'),
+                'identity' => $style(8, 400, false, 'Calibri', 'left'),
+                'table' => $style(8, 400, false, 'Calibri', 'left'),
+                'table_header' => $style(8, 700, false, 'Calibri', 'center'),
+                'formula' => $style(6, 400, false, 'Cambria Math', 'center'),
+                'summary' => $style(8, 700, false, 'Calibri', 'left'),
+                'photo' => $style(9, 400, false, 'Calibri', 'center'),
+            ],
+        ];
     }
 }

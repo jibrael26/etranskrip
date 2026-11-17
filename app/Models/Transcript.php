@@ -16,6 +16,7 @@ class Transcript extends Model
         'student_nim',
         'header',
         'pejabat',
+        'style',
         'mata_kuliah',
         'total_sks',
         'total_bobot',
@@ -30,6 +31,7 @@ class Transcript extends Model
         return [
             'header' => 'array',
             'pejabat' => 'array',
+            'style' => 'array',
             'mata_kuliah' => 'array',
             'total_sks' => 'float',
             'total_bobot' => 'float',

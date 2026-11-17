@@ -1,6 +1,7 @@
 <div
     @keydown.escape.window="closeConfirmation()"
     @print-transcript.window="window.print()"
+    @critical-grades-detected.window="handleCriticalGrades($event.detail.items)"
     x-data="{
     tableOpen: true,
     showAll: false,
@@ -10,30 +11,75 @@
     pendingAction: null,
     pendingIndex: null,
     hasInvalidGrades: @json(count($peringatanNilai) > 0),
+    reviewItems: @js($peringatanNilai),
+    reviewMode: false,
+    reviewConfirmed: false,
+    reviewAcknowledged: @json($nilaiKritisDitinjau),
+    init() {
+        if (this.hasInvalidGrades && !this.reviewAcknowledged) {
+            this.openReviewModal();
+        }
+    },
+    handleCriticalGrades(items) {
+        this.reviewItems = items || [];
+        this.hasInvalidGrades = this.reviewItems.length > 0;
+        this.reviewAcknowledged = false;
+
+        if (this.hasInvalidGrades) {
+            this.openReviewModal();
+        } else {
+            this.closeConfirmation();
+        }
+    },
+    openReviewModal() {
+        this.confirmationTitle = 'Peninjauan nilai wajib';
+        this.confirmationMessage = 'Periksa daftar nilai kritis berikut sebelum menyimpan atau mencetak transkrip.';
+        this.reviewMode = true;
+        this.reviewConfirmed = false;
+        this.confirmationOpen = true;
+    },
     openConfirmation(title, message, action) {
+        if (['save', 'print'].includes(action) && this.hasInvalidGrades && !this.reviewAcknowledged) {
+            this.pendingAction = action;
+            this.openReviewModal();
+            return;
+        }
+
         this.confirmationTitle = title;
         this.confirmationMessage = message;
         this.pendingAction = action;
+        this.reviewMode = false;
+        this.reviewConfirmed = false;
         this.confirmationOpen = true;
     },
     closeConfirmation() {
         this.confirmationOpen = false;
         this.pendingAction = null;
+        this.reviewMode = false;
+        this.reviewConfirmed = false;
+    },
+    runPendingAction(action) {
+        if (action === 'save') this.$wire.simpanTranskrip();
+        if (action === 'delete') this.$wire.hapusMataKuliah(this.pendingIndex);
+        if (action === 'print') this.$wire.cetakTranskrip();
     },
     confirmAction() {
         const action = this.pendingAction;
 
-        if (['save', 'print'].includes(action) && this.hasInvalidGrades) {
-            this.confirmationTitle = 'TINDAKAN DIBLOKIR';
-            this.confirmationMessage = 'Masih ada nilai di bawah C. Perbaiki semua baris berwarna merah terlebih dahulu. Transkrip tidak dapat disimpan atau dicetak sebelum nilai diperbaiki.';
-            this.pendingAction = null;
+        if (this.reviewMode) {
+            if (!this.reviewConfirmed) return;
+
+            this.$wire.konfirmasiPeninjauan().then(() => {
+                this.reviewAcknowledged = true;
+                const nextAction = action;
+                this.closeConfirmation();
+                if (nextAction) this.runPendingAction(nextAction);
+            });
             return;
         }
 
         this.closeConfirmation();
-        if (action === 'save') this.$wire.simpanTranskrip();
-        if (action === 'delete') this.$wire.hapusMataKuliah(this.pendingIndex);
-        if (action === 'print') this.$wire.cetakTranskrip();
+        this.runPendingAction(action);
     },
     visibleLimit: 12,
     searchTerm: '',
@@ -110,8 +156,19 @@
             }
         });
 
-        // Kirim data ke Livewire Controller
-        $wire.set('mataKuliah', tempMataKuliah);
+        const criticalRows = tempMataKuliah.filter((item) => {
+            const nilai = (item.nilai || '').trim().toUpperCase();
+            const bobot = Number.parseFloat(String(item.bobot || '').replace(',', '.'));
+
+            return (nilai === 'D' && Number.isFinite(bobot) && bobot <= 1.10)
+                || (nilai === 'E' && Number.isFinite(bobot) && bobot === 0);
+        });
+
+        // Tampilkan modal segera setelah parser menemukan nilai kritis.
+        this.handleCriticalGrades(criticalRows);
+
+        // Simpan hasil impor dan validasi ulang di Livewire.
+        this.$wire.imporMataKuliah(tempMataKuliah);
     }
 }">
 
@@ -167,7 +224,7 @@
                             <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
                             <span wire:loading wire:target="simpanTranskrip">Menyimpan...</span>
                         </button>
-                        <button type="button" @click="openConfirmation('Cetak transkrip?', 'Pastikan data yang tampil sudah benar sebelum mencetak dokumen. Jika masih ada nilai D atau E yang terdeteksi, pencetakan akan diblokir.', 'print')" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
+                        <button type="button" @click="openConfirmation('Cetak transkrip?', 'Pastikan data yang tampil sudah benar sebelum mencetak dokumen. Jika ada nilai kritis, peninjauan wajib dikonfirmasi terlebih dahulu.', 'print')" class="flex items-center justify-center gap-2 rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f]">
                             Cetak PDF <span aria-hidden="true">→</span>
                         </button>
                     </div>
@@ -235,10 +292,10 @@
                                     <div>
                                         <p class="font-black uppercase tracking-wide text-red-700">PERINGATAN KERAS: NILAI DI BAWAH C</p>
                                         <p class="mt-1 font-semibold">
-                                            {{ count($peringatanNilai) }} mata kuliah harus diperbaiki sebelum transkrip dapat disimpan atau dicetak.
+                                            {{ count($peringatanNilai) }} mata kuliah wajib ditinjau sebelum transkrip dapat disimpan atau dicetak.
                                         </p>
                                         <p class="mt-1 text-xs font-medium">
-                                            Kriteria: kode D dengan bobot maksimal 1,50 atau kode E dengan bobot 0,00.
+                                            Kriteria: nilai D dengan bobot maksimal 1,10 atau nilai E dengan bobot 0,00.
                                         </p>
                                         <ul class="mt-2 list-inside list-disc text-xs font-bold">
                                             @foreach ($peringatanNilai as $mk)
@@ -374,21 +431,23 @@
             </div>
 
             <div class="transcript-header-content text-center">
-                <h3 class="transcript-header-ministry uppercase">{{ $header['kementerian'] }}</h3>
-                <h1 class="transcript-header-university uppercase">{{ $header['universitas'] }}</h1>
-                <h2 class="transcript-header-faculty uppercase">{{ $header['fakultas'] }}</h2>
-                <p class="transcript-header-address">{{ $header['alamat'] }}</p>
+                <h3 class="transcript-header-ministry uppercase" style="{{ $this->styleAttribute('header', 'kementerian') }}">{{ $header['kementerian'] }}</h3>
+                <h1 class="transcript-header-university uppercase" style="{{ $this->styleAttribute('header', 'universitas') }}">{{ $header['universitas'] }}</h1>
+                <h2 class="transcript-header-faculty uppercase" style="{{ $this->styleAttribute('header', 'fakultas') }}">{{ $header['fakultas'] }}</h2>
+                <p class="transcript-header-address" style="{{ $this->styleAttribute('header', 'alamat') }}">{{ $header['alamat'] }}</p>
             </div>
         </div>
 
         <div class="transcript-text mb-1 text-center">
-            <h2 class="transcript-text-heading text-lg font-bold">TRANSKRIP AKADEMIK</h2>
-            <p class="text-xs">PROGRAM : SARJANA</p>
-            <p class="text-xs font-bold">NOMOR TRANSKRIP : {{ $header['no_transkrip'] }}</p>
-            <p class="text-xs font-bold">NOMOR IJAZAH : {{ $header['no_ijazah'] }}</p>
+            <h2 class="transcript-text-heading text-lg font-bold" style="{{ $this->styleAttribute('content', 'title') }}">TRANSKRIP AKADEMIK</h2>
+            <div style="{{ $this->styleAttribute('content', 'document_meta') }}">
+                <p>PROGRAM : SARJANA</p>
+                <p class="font-bold">NOMOR TRANSKRIP : {{ $header['no_transkrip'] }}</p>
+                <p class="font-bold">NOMOR IJAZAH : {{ $header['no_ijazah'] }}</p>
+            </div>
         </div>
 
-        <div class="transcript-text relative left-[15mm] mx-auto mb-2 grid w-[120mm] grid-cols-[45mm_0.75rem_1fr] gap-y-0.5 text-xs">
+        <div class="transcript-text relative left-[15mm] mx-auto mb-2 grid w-[120mm] grid-cols-[45mm_0.75rem_1fr] gap-y-0.5 text-xs" style="{{ $this->styleAttribute('content', 'identity') }}">
             <div class="uppercase">Nama</div>
             <div class="left-0">:</div>
             <div class="uppercase">{{ $header['nama'] }}</div>
@@ -419,9 +478,9 @@
                 aria-hidden="true">
 
             <div class="transcript-column relative z-10 w-1/2">
-                <table class="transcript-table h-full w-full border-collapse border border-black text-[13px]">
+                <table class="transcript-table h-full w-full border-collapse border border-black text-[13px]" style="{{ $this->styleAttribute('content', 'table') }}">
                     <thead>
-                        <tr class="bg-gray-100 text-center">
+                        <tr class="bg-gray-100 text-center" style="{{ $this->styleAttribute('content', 'table_header') }}">
                             <th class="border border-black px-1 py-1 w-6">NO</th>
                             <th class="border border-black px-1 py-1">MATAKULIAH</th>
                             <th class="border border-black px-1 py-1 w-6">SKS</th>
@@ -483,9 +542,9 @@
             </div>
 
             <div class="transcript-column relative z-10 w-1/2">
-                <table class="transcript-table h-full w-full border-collapse border border-black text-[12px]">
+                <table class="transcript-table h-full w-full border-collapse border border-black text-[12px]" style="{{ $this->styleAttribute('content', 'table') }}">
                     <thead>
-                        <tr class="bg-gray-100 text-center">
+                        <tr class="bg-gray-100 text-center" style="{{ $this->styleAttribute('content', 'table_header') }}">
                             <th class="border border-black px-1 py-1 w-6">NO</th>
                             <th class="border border-black px-1 py-1">MATAKULIAH</th>
                             <th class="border border-black px-1 py-1 w-6">SKS</th>
@@ -544,7 +603,7 @@
 
         <div class="transcript-index border border-black text-center">
             <div class="font-bold">Indeks Prestasi :</div>
-            <div class="transcript-index-formula">
+            <div class="transcript-index-formula" style="{{ $this->styleAttribute('content', 'formula') }}">
                 <span class="transcript-index-fraction font-bold font-size= 9px; !important;">
                     <span class="font-bold"><u class="font-size= 9px; !important;">IPK (7) + Komprehensif (3)</u></span>
                     <span class="font-size= 9px; font-weight: bold !important;">10</span>
@@ -561,7 +620,7 @@
 
         <div class="mt-0 pt-0 flex text-xs">
             <div class=" pr-7">
-                <div class="transcript-summary font-bold">
+                <div class="transcript-summary font-bold" style="{{ $this->styleAttribute('content', 'summary') }}">
                     <div class="transcript-summary-row">
                         <span>Total SKS</span>
                         <span class="transcript-summary-row-value text-center">:</span>
@@ -578,18 +637,18 @@
                         <span class="transcript-summary-row-value-text">{{ $predikat }}</span>
                     </div>
                 </div>
-                <div class="transcript-photo  w-20 h-24 border border-black flex items-center justify-center text-[10px] text-gray-500">
+                <div class="transcript-photo w-20 h-24 border border-black flex items-center justify-center text-[10px] text-gray-500" style="{{ $this->styleAttribute('content', 'photo') }}">
                     Pas Foto<br>3 x 4
                 </div>
             </div>
             <div class="transcript-sign ml-auto w-1/2 text-center relative">
-                <p class="font-bold">Tondano, {{ $header['tgl_lulus'] }}</p>
-                <p class="font-bold">{{ $pejabat['jabatan'] }}</p>
+                <p style="{{ $this->styleAttribute('pejabat', 'tgl_cetak') }}">Tondano, {{ $header['tgl_lulus'] }}</p>
+                <p style="{{ $this->styleAttribute('pejabat', 'jabatan') }}">{{ $pejabat['jabatan'] }}</p>
 
                 <div class="h-16"></div>
 
-                <p class="font-bold underline">{{ $pejabat['nama'] }}</p>
-                <p class="font-bold">NIP. {{ $pejabat['nip'] }}</p>
+                <p style="{{ $this->styleAttribute('pejabat', 'nama') }}">{{ $pejabat['nama'] }}</p>
+                <p style="{{ $this->styleAttribute('pejabat', 'nip') }}">NIP. {{ $pejabat['nip'] }}</p>
             </div>
         </div>
 
@@ -605,13 +664,56 @@
         aria-labelledby="transcript-confirmation-title"
         @click.self="closeConfirmation()"
     >
-        <div x-show="confirmationOpen" x-transition class="w-full max-w-md rounded-3xl bg-white p-6 text-slate-900 shadow-2xl sm:p-7">
-            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-100 text-xl font-black text-red-600" aria-hidden="true">!</div>
-            <h2 id="transcript-confirmation-title" class="mt-5 text-xl font-black text-[#0d1b3e]" x-text="confirmationTitle"></h2>
-            <p class="mt-2 text-sm leading-6 text-slate-500" x-text="confirmationMessage"></p>
-            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button type="button" @click="closeConfirmation()" class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50">Batal</button>
-                <button type="button" x-show="pendingAction" @click="confirmAction()" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#f4771f]">Ya, Lanjutkan</button>
+        <div x-show="confirmationOpen" x-transition class="w-full max-w-xl overflow-hidden rounded-3xl bg-white text-slate-900 shadow-2xl">
+            <div class="border-b border-red-100 bg-gradient-to-br from-red-50 via-orange-50 to-white px-6 pb-5 pt-6 sm:px-7">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-xl font-black text-white shadow-lg shadow-red-900/20" aria-hidden="true">!</div>
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-[0.18em] text-red-600">Perhatian diperlukan</p>
+                        <h2 id="transcript-confirmation-title" class="mt-1 text-xl font-black text-[#0d1b3e]" x-text="confirmationTitle"></h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-600" x-text="confirmationMessage"></p>
+                    </div>
+                </div>
+                <div x-show="reviewMode" x-cloak class="mt-5">
+                    <div class="rounded-2xl border border-red-100 bg-white/80 p-3">
+                        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Temuan</p>
+                        <p class="mt-1 text-2xl font-black text-red-600" x-text="reviewItems.length"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-5 sm:px-7">
+                <div x-show="reviewMode" x-cloak>
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-xs font-black uppercase tracking-wide text-slate-500">Daftar nilai yang perlu ditinjau</p>
+                        <span class="text-[11px] font-semibold text-slate-400">Periksa sebelum lanjut</span>
+                    </div>
+                    <div class="mt-3 max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+                    <template x-for="item in reviewItems" :key="item.no + '-' + item.nama + '-' + item.paket">
+                        <div class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="truncate font-bold text-slate-800" x-text="item.nama || 'Mata kuliah tanpa nama'"></p>
+                                    <p class="mt-1 text-[11px] text-slate-400" x-text="'Kode baris: ' + (item.no || '-')"></p>
+                                </div>
+                                <span class="shrink-0 rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-black uppercase text-red-700" x-text="'Semester ' + (item.paket || '-')"></span>
+                            </div>
+                            <div class="mt-2 flex items-center gap-2 text-xs">
+                                <span class="rounded-lg bg-red-50 px-2 py-1 font-black text-red-700" x-text="'Nilai ' + (item.nilai || '-')"></span>
+                                <span class="text-slate-400">Bobot</span>
+                                <strong class="text-slate-700" x-text="Number.parseFloat(item.bobot || 0).toFixed(2).replace('.', ',')"></strong>
+                            </div>
+                        </div>
+                    </template>
+                    </div>
+                    <label class="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold leading-5 text-slate-700">
+                        <input type="checkbox" x-model="reviewConfirmed" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
+                        <span>Saya sudah meninjau seluruh nilai di atas dan memahami bahwa data ini perlu diperiksa kembali.</span>
+                    </label>
+                </div>
+                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button type="button" @click="closeConfirmation()" class="rounded-xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-600 transition hover:bg-slate-50" x-text="reviewMode ? 'Tinjau nanti' : 'Batal'"></button>
+                    <button type="button" x-show="pendingAction || reviewMode" @click="confirmAction()" :disabled="reviewMode && !reviewConfirmed" class="rounded-xl bg-[#ff862d] px-4 py-3 text-sm font-bold text-white shadow-lg shadow-orange-900/20 transition hover:bg-[#f4771f] disabled:cursor-not-allowed disabled:opacity-50" x-text="reviewMode ? 'Konfirmasi peninjauan' : 'Ya, Lanjutkan'"></button>
+                </div>
             </div>
         </div>
     </div>

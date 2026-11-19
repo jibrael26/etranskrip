@@ -60,6 +60,8 @@ class TranskripForm extends Component
 
     public bool $nilaiKritisDitinjau = false;
 
+    public bool $bukaKunciMataKuliahWajib = false;
+
     public function mount(?Transcript $transcript = null)
     {
         if (! $transcript?->exists) {
@@ -270,7 +272,8 @@ class TranskripForm extends Component
             return;
         }
 
-        if (strtoupper(trim((string) ($this->mataKuliah[$index]['jenis'] ?? ''))) === 'W') {
+        if (! $this->bukaKunciMataKuliahWajib
+            && strtoupper(trim((string) ($this->mataKuliah[$index]['jenis'] ?? ''))) === 'W') {
             $this->addError('mataKuliah', 'Mata kuliah wajib tidak dapat dihapus, tetapi datanya masih dapat diedit.');
 
             return;
@@ -306,10 +309,16 @@ class TranskripForm extends Component
 
     private function daftarNilaiKritis(): array
     {
-        return array_values(array_filter(
-            $this->mataKuliah,
-            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
-        ));
+        $nilaiKritis = [];
+
+        foreach ($this->mataKuliah as $index => $mk) {
+            if ($this->isNilaiDiBawahC($mk)) {
+                $mk['_index'] = $index;
+                $nilaiKritis[] = $mk;
+            }
+        }
+
+        return $nilaiKritis;
     }
 
     public function hitungIPK()
@@ -390,13 +399,13 @@ class TranskripForm extends Component
     public function render()
     {
         $mataKuliah = array_values($this->mataKuliah);
-        $mataKuliahPeriksa = array_filter(
-            $mataKuliah,
-            fn (array $mk): bool => $this->isNilaiDiBawahC($mk)
-        ) + array_filter(
-            $mataKuliah,
-            fn (array $mk): bool => ! $this->isNilaiDiBawahC($mk)
-        );
+        $mataKuliahPeriksa = $this->mataKuliah;
+        uasort($mataKuliahPeriksa, function (array $a, array $b): int {
+            $aKritis = $this->isNilaiDiBawahC($a);
+            $bKritis = $this->isNilaiDiBawahC($b);
+
+            return $bKritis <=> $aKritis;
+        });
         $semesterKiri = array_fill(1, 4, []);
         $semesterKanan = array_fill(5, 4, []);
         $semesterLainnya = [];

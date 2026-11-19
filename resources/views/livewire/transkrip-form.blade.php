@@ -4,7 +4,7 @@
     @critical-grades-detected.window="handleCriticalGrades($event.detail.items)"
     x-data="{
     tableOpen: true,
-    showAll: false,
+    showAll: true,
     confirmationOpen: false,
     confirmationTitle: '',
     confirmationMessage: '',
@@ -84,17 +84,20 @@
     filterPaket: '',
     filterNilai: '',
     filterJenis: '',
+    filterKritis: false,
     rowMatches(row) {
         const search = this.searchTerm.trim().toLowerCase();
         const name = (row.dataset.search || '').toLowerCase();
         const paket = row.dataset.paket || '';
         const nilai = row.dataset.nilai || '';
         const jenis = row.dataset.jenis || '';
+        const kritis = row.dataset.kritis === 'true';
 
         return (!search || name.includes(search))
             && (!this.filterPaket || paket === this.filterPaket)
             && (!this.filterNilai || nilai === this.filterNilai)
-            && (!this.filterJenis || jenis === this.filterJenis);
+            && (!this.filterJenis || jenis === this.filterJenis)
+            && (!this.filterKritis || kritis);
     },
     rowVisible(row) {
         if (!this.rowMatches(row)) {
@@ -111,6 +114,33 @@
     hasVisibleRows() {
         return [...this.$root.querySelectorAll('tbody[data-course-body] tr')]
             .some((row) => this.rowMatches(row));
+    },
+    resetCourseFilters() {
+        this.searchTerm = '';
+        this.filterPaket = '';
+        this.filterNilai = '';
+        this.filterJenis = '';
+        this.filterKritis = false;
+        this.showAll = true;
+    },
+    locateCriticalCourse(item) {
+        this.tableOpen = true;
+        this.resetCourseFilters();
+        this.filterKritis = true;
+        this.closeConfirmation();
+
+        this.$nextTick(() => {
+            if (item._index === undefined || item._index === null) return;
+
+            const row = [...this.$root.querySelectorAll('tbody[data-course-body] tr')]
+                .find((candidate) => candidate.dataset.index === String(item._index));
+
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.classList.add('ring-2', 'ring-inset', 'ring-red-500');
+                window.setTimeout(() => row.classList.remove('ring-2', 'ring-inset', 'ring-red-500'), 2500);
+            }
+        });
     },
     parsePaste(e) {
         const rows = e.clipboardData.getData('text').split('\n');
@@ -151,7 +181,10 @@
 
             return (nilai === 'D' && Number.isFinite(bobot) && bobot <= 1.10)
                 || (nilai === 'E' && Number.isFinite(bobot) && bobot === 0);
-        });
+        }).map((item) => ({
+            ...item,
+            _index: tempMataKuliah.indexOf(item),
+        }));
 
         // Tampilkan modal segera setelah parser menemukan nilai kritis.
         this.handleCriticalGrades(criticalRows);
@@ -227,27 +260,36 @@
             </div>
 
             <section class="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_50px_-25px_rgba(15,35,75,.25)]">
-                <div class="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
-                    <div>
+                <div class="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="min-w-0">
                         <p class="mb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#ff7627]">Langkah 03</p>
                         <h2 class="text-xl font-extrabold text-[#0d1b3e]">Periksa & edit data mata kuliah</h2>
                         <p class="mt-1 text-sm text-slate-500">Data hasil impor dapat diperbaiki sebelum dicetak. Perubahan IPK akan dihitung otomatis.</p>
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <button type="button" @click.prevent="tableOpen = !tableOpen" :aria-expanded="tableOpen.toString()" aria-controls="course-review-content" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-[#34415f] transition hover:border-[#34415f]">
+                    <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <button type="button" @click.prevent="tableOpen = !tableOpen" :aria-expanded="tableOpen.toString()" aria-controls="course-review-content" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-[#34415f] transition hover:border-[#34415f] hover:bg-slate-50">
                             <span x-text="tableOpen ? 'Sembunyikan tabel' : 'Tampilkan tabel'"></span>
-                            <span class="text-base" x-text="tableOpen ? '−' : '+'"></span>
+                            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-slate-100 text-sm" x-text="tableOpen ? '−' : '+'"></span>
                         </button>
-                        <button type="button" wire:click="tambahMataKuliah" class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#34415f] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#26324d]">
+                        <button type="button" wire:click="tambahMataKuliah" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#34415f] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#26324d]">
                             <span class="text-lg leading-none">+</span> Tambah Mata Kuliah
                         </button>
+                        <label class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 text-sm font-bold transition" :class="$wire.bukaKunciMataKuliahWajib ? 'border-orange-300 bg-orange-50 text-[#ed6f24]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'">
+                            <input type="checkbox" wire:model.live="bukaKunciMataKuliahWajib" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
+                            <span wire:key="course-lock-label">
+                                <span wire:loading.remove wire:target="bukaKunciMataKuliahWajib">
+                                    {{ $bukaKunciMataKuliahWajib ? 'Kunci terbuka' : 'Buka kunci mata kuliah W' }}
+                                </span>
+                                <span wire:loading wire:target="bukaKunciMataKuliahWajib">Memproses...</span>
+                            </span>
+                        </label>
                     </div>
                 </div>
 
                 @if (count($mataKuliah) > 0)
                     <div id="course-review-content" x-show="tableOpen" x-transition.opacity x-cloak>
-                        <div class="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center">
-                            <label class="relative w-full min-w-0 grow basis-0 sm:min-w-[280px]">
+                        <div class="grid gap-3 border-b border-slate-100 bg-slate-50/80 p-4 xl:grid-cols-[minmax(240px,1fr)_140px_140px_140px_auto] xl:items-end">
+                            <label class="relative w-full min-w-0">
                                 <span class="sr-only">Cari mata kuliah</span>
                                 <input type="search" x-model="searchTerm" class="search-input" placeholder="Cari nama atau nomor mata kuliah..." aria-label="Cari mata kuliah">
                                 <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -255,27 +297,35 @@
                                 </svg>
                                 <button type="button" x-show="searchTerm" x-cloak @click="searchTerm = ''" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Hapus pencarian">×</button>
                             </label>
-                            <select x-model="filterPaket" class="modern-input w-full sm:w-44">
+                            <select x-model="filterPaket" class="modern-input w-full">
                                 <option value="">Semua paket</option>
                                 @foreach (range(1, 8) as $paket)
                                     <option value="{{ $paket }}">Paket {{ $paket }}</option>
                                 @endforeach
                             </select>
-                            <select x-model="filterNilai" class="modern-input w-full sm:w-40">
+                            <select x-model="filterNilai" class="modern-input w-full">
                                 <option value="">Semua nilai</option>
                                 @foreach (['A', 'B', 'C', 'D', 'E'] as $nilai)
                                     <option value="{{ $nilai }}">{{ $nilai }}</option>
                                 @endforeach
                             </select>
-                            <select x-model="filterJenis" class="modern-input w-full sm:w-40">
+                            <select x-model="filterJenis" class="modern-input w-full">
                                 <option value="">Semua jenis</option>
                                 <option value="W">Wajib (W)</option>
                                 <option value="P">Pilihan (P)</option>
                             </select>
-                            <button type="button" @click="showAll = !showAll" class="w-full whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-[#34415f] transition hover:border-[#ff862d] hover:text-[#ed6f24] sm:w-auto" x-text="showAll ? 'Tampilkan sebagian' : 'Tampilkan semua'"></button>
+                            <div class="flex gap-2 xl:col-span-5">
+                                <button type="button" @click="filterKritis = !filterKritis" :class="filterKritis ? 'border-red-300 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-[#34415f]'" class="whitespace-nowrap rounded-xl border px-4 py-3 text-xs font-bold transition hover:border-red-300">
+                                    <span x-text="filterKritis ? 'Semua nilai' : 'Nilai bermasalah'"></span>
+                                    @if (count($peringatanNilai) > 0)
+                                        <span class="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">{{ count($peringatanNilai) }}</span>
+                                    @endif
+                                </button>
+                                <button type="button" @click="showAll = !showAll" class="whitespace-nowrap rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs font-bold text-[#34415f] transition hover:border-[#ff862d] hover:text-[#ed6f24]" x-text="showAll ? 'Tampilkan sebagian' : 'Tampilkan semua'"></button>
+                            </div>
                         </div>
                         @if (count($peringatanNilai) > 0)
-                            <div class="mx-4 mt-4 animate-pulse rounded-xl border-2 border-red-500 bg-red-50 px-4 py-4 text-sm text-red-900 shadow-lg shadow-red-200/70" role="alert" aria-live="assertive">
+                            <div class="mx-4 mt-4 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-4 text-sm text-red-900 shadow-sm" role="alert" aria-live="assertive">
                                 <div class="flex items-start gap-3">
                                     <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-lg font-black text-white" aria-hidden="true">!</span>
                                     <div>
@@ -288,19 +338,25 @@
                                         </p>
                                         <ul class="mt-2 list-inside list-disc text-xs font-bold">
                                             @foreach ($peringatanNilai as $mk)
-                                                <li>{{ $mk['nama'] ?: 'Mata kuliah tanpa nama' }} — {{ $mk['nilai'] }} ({{ number_format((float) $mk['bobot'], 2, ',', '') }})</li>
+                                                <li>
+                                                    {{ $mk['nama'] ?: 'Mata kuliah tanpa nama' }} — {{ $mk['nilai'] }} ({{ number_format((float) $mk['bobot'], 2, ',', '') }})
+                                                    <button type="button" @click="locateCriticalCourse({{ Illuminate\Support\Js::from($mk) }})" class="ml-2 rounded-md border border-red-200 bg-white px-2 py-1 text-[10px] font-black text-red-700 hover:bg-red-100">
+                                                        Cari di tabel
+                                                    </button>
+                                                </li>
                                             @endforeach
                                         </ul>
                                     </div>
                                 </div>
                             </div>
                         @endif
-                        <div class="max-h-[620px] overflow-auto">
-                        <table class="w-full min-w-[1020px] text-left text-sm">
-                            <thead class="sticky top-0 z-10 bg-[#f1f5f9] text-[11px] uppercase tracking-wider text-slate-500 shadow-sm">
+                        <div class="course-table-scroll max-h-[620px] overflow-auto rounded-b-3xl">
+                        <table class="course-table w-full min-w-[1120px] text-left text-sm">
+                            <thead class="sticky top-0 z-10 bg-[#34415f] text-[11px] uppercase tracking-[0.12em] text-slate-200 shadow-[0_4px_12px_rgba(15,35,75,.12)]">
                                 <tr>
-                                    <th class="w-16 px-5 py-3 font-bold">No</th>
-                                    <th class="px-3 py-3 font-bold">Nama Mata Kuliah</th>
+                                    <th class="w-14 px-4 py-3.5 text-center font-extrabold">No</th>
+                                    <th class="w-24 px-3 py-3.5 font-extrabold">Kode</th>
+                                    <th class="px-3 py-3.5 font-extrabold">Nama Mata Kuliah</th>
                                     <th class="w-20 px-3 py-3 font-bold">W/P</th>
                                     <th class="w-24 px-3 py-3 font-bold">SKS</th>
                                     <th class="w-28 px-3 py-3 font-bold">Paket Sem.</th>
@@ -311,21 +367,35 @@
                             </thead>
                             <tbody data-course-body class="divide-y divide-slate-100">
                                 @foreach ($mataKuliahPeriksa as $index => $mk)
-                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" @class([
-                                        'transition hover:bg-orange-50',
+                                    <tr x-show="rowVisible($el)" x-cloak data-index="{{ $index }}" data-kritis="{{ $this->isNilaiDiBawahC($mk) ? 'true' : 'false' }}" data-search="{{ strtolower(($mk['no'] ?? '') . ' ' . ($mk['nama'] ?? '')) }}" data-paket="{{ $mk['paket'] ?? '' }}" data-nilai="{{ $mk['nilai'] ?? '' }}" data-jenis="{{ $mk['jenis'] ?? '' }}" wire:key="mata-kuliah-{{ $index }}" @class([
+                                        'course-row transition duration-150',
                                         'bg-red-50 ring-2 ring-inset ring-red-300' => $this->isNilaiDiBawahC($mk),
                                         'odd:bg-white even:bg-slate-50/60' => ! $this->isNilaiDiBawahC($mk),
                                     ])>
-                                        <td class="px-5 py-3.5">
+                                        <td class="px-4 py-3.5 text-center">
+                                            <span class="course-row-number">{{ $loop->iteration }}</span>
+                                        </td>
+                                        <td class="px-3 py-3.5">
                                             <input type="text" wire:model.live="mataKuliah.{{ $index }}.no" class="edit-input text-center" aria-label="Nomor mata kuliah">
                                         </td>
                                         <td class="px-3 py-3.5">
                                             <input type="text" wire:model.live="mataKuliah.{{ $index }}.nama" class="edit-input" placeholder="Nama mata kuliah">
                                         </td>
                                         <td class="px-3 py-3.5">
-                                            <div class="edit-input bg-slate-100 text-center font-bold" aria-label="Kode jenis mata kuliah">
-                                                {{ $mk['jenis'] ?? '-' }}
-                                            </div>
+                                            @if ($bukaKunciMataKuliahWajib)
+                                                <select wire:model.live="mataKuliah.{{ $index }}.jenis" class="edit-input text-center font-bold" aria-label="Kode jenis mata kuliah">
+                                                    <option value="">-</option>
+                                                    <option value="W">W</option>
+                                                    <option value="P">P</option>
+                                                </select>
+                                            @else
+                                                <div class="mx-auto flex h-9 w-10 items-center justify-center rounded-lg border text-xs font-black" @class([
+                                                    'border-orange-200 bg-orange-50 text-[#ed6f24]' => strtoupper(trim((string) ($mk['jenis'] ?? ''))) === 'W',
+                                                    'border-slate-200 bg-slate-100 text-slate-600' => strtoupper(trim((string) ($mk['jenis'] ?? ''))) !== 'W',
+                                                ]) aria-label="Kode jenis mata kuliah">
+                                                    {{ $mk['jenis'] ?: '-' }}
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="px-3 py-3.5">
                                             <input type="number" min="0" step="0.5" wire:model.live="mataKuliah.{{ $index }}.sks" class="edit-input" placeholder="0">
@@ -348,7 +418,7 @@
                                             @endif
                                         </td>
                                         <td class="px-5 py-3.5 text-right">
-                                            @if (strtoupper(trim((string) ($mk['jenis'] ?? ''))) === 'W')
+                                            @if (strtoupper(trim((string) ($mk['jenis'] ?? ''))) === 'W' && ! $bukaKunciMataKuliahWajib)
                                                 <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase text-slate-400" title="Mata kuliah wajib tidak dapat dihapus">
                                                     <span aria-hidden="true">🔒</span> Wajib
                                                 </span>
@@ -367,42 +437,52 @@
                         Tidak ada mata kuliah yang sesuai dengan pencarian atau filter.
                     </div>
                     </div>
-                    <div x-show="tableOpen" x-cloak class="grid gap-3 border-t border-slate-100 bg-slate-50 p-4 sm:grid-cols-4 sm:p-6">
-                        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mata kuliah</p>
-                            <p class="mt-1 text-xl font-black text-[#0d1b3e]">{{ count($mataKuliah) }}</p>
+                    <div x-show="tableOpen" x-cloak class="grid gap-3 border-t border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2 lg:grid-cols-4 sm:p-6">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_-16px_rgba(15,35,75,.35)]">
+                            <div class="flex items-center justify-between">
+                                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Mata kuliah</p>
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-[#fff3e8] text-sm font-black text-[#ed6f24]" aria-hidden="true">MK</span>
+                            </div>
+                            <p class="mt-2 text-2xl font-black text-[#0d1b3e]">{{ count($mataKuliah) }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-400">Baris dalam tabel</p>
                         </div>
-                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_-16px_rgba(15,35,75,.35)]">
                             <span class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Total SKS
                                 <span class="normal-case tracking-normal text-slate-400">edit manual</span>
                             </span>
                             <input type="number" min="0" step="1" wire:model.live="totalSks" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="Total SKS">
                         </label>
-                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_-16px_rgba(15,35,75,.35)]">
                             <span class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 Total Nilai
                                 <span class="normal-case tracking-normal text-slate-400">edit manual</span>
                             </span>
                             <input type="number" min="0" step="1" wire:model.live="totalBobot" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="Total Nilai">
                         </label>
-                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <label class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_8px_24px_-16px_rgba(15,35,75,.35)]">
                             <span class="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                 IPK
                                 <span class="normal-case tracking-normal text-slate-400">edit manual</span>
                             </span>
                             <input type="number" min="0" max="4,00" step="0.01" wire:model.live="ipk" @disabled(!$ringkasanManual) class="summary-input mt-2" aria-label="IPK">
                         </label>
-                        <div class="flex items-center gap-3 sm:col-span-3">
-                            <input id="ringkasan-manual" type="checkbox" wire:model.live="ringkasanManual" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
-                            <label for="ringkasan-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Total SKS, Total Nilai, dan IPK</label>
-                            <span class="text-xs text-slate-400">{{ $ringkasanManual ? 'Nilai manual aktif' : 'Nilai dihitung dari tabel' }}</span>
+                        <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-2 lg:col-span-3 lg:flex-row lg:items-center">
+                            <label for="ringkasan-manual" class="flex min-w-0 cursor-pointer items-center gap-3 text-xs font-semibold text-slate-600">
+                                <input id="ringkasan-manual" type="checkbox" wire:model.live="ringkasanManual" class="h-4 w-4 shrink-0 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
+                                <span>Aktifkan edit manual Total SKS, Total Nilai, dan IPK</span>
+                            </label>
+                            <span class="ml-auto rounded-full px-3 py-1.5 text-[11px] font-bold" :class="$wire.ringkasanManual ? 'bg-orange-50 text-[#ed6f24]' : 'bg-slate-100 text-slate-500'">
+                                {{ $ringkasanManual ? 'Nilai manual aktif' : 'Nilai dihitung dari tabel' }}
+                            </span>
                         </div>
-                        <div class="flex items-center gap-3 sm:col-span-3">
-                            <input id="yudisium-manual" type="checkbox" wire:model.live="yudisiumManual" class="h-4 w-4 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
-                            <label for="yudisium-manual" class="text-xs font-semibold text-slate-600">Aktifkan edit manual Nilai Yudisium</label>
-                            <input type="number" min="0" max="4" step="0.01" wire:model.live="nilaiYudisium" @disabled(!$yudisiumManual) class="summary-input max-w-32" aria-label="Nilai Yudisium">
-                            <span class="text-xs text-slate-400">{{ $yudisiumManual ? 'Nilai manual aktif' : 'Nilai dihitung otomatis' }}</span>
+                        <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-2 lg:col-span-1">
+                            <label for="yudisium-manual" class="flex cursor-pointer items-center gap-3 text-xs font-semibold text-slate-600">
+                                <input id="yudisium-manual" type="checkbox" wire:model.live="yudisiumManual" class="h-4 w-4 shrink-0 rounded border-slate-300 text-[#ff862d] focus:ring-[#ff862d]">
+                                <span>Nilai Yudisium manual</span>
+                            </label>
+                            <input type="number" min="0" max="4" step="0.01" wire:model.live="nilaiYudisium" @disabled(!$yudisiumManual) class="summary-input" aria-label="Nilai Yudisium">
+                            <span class="text-[11px] font-semibold text-slate-400">{{ $yudisiumManual ? 'Nilai manual aktif' : 'Nilai dihitung otomatis' }}</span>
                         </div>
                     </div>
                 @else
@@ -696,6 +776,9 @@
                                 <span class="rounded-lg bg-red-50 px-2 py-1 font-black text-red-700" x-text="'Nilai ' + (item.nilai || '-')"></span>
                                 <span class="text-slate-400">Bobot</span>
                                 <strong class="text-slate-700" x-text="Number.parseFloat(item.bobot || 0).toFixed(2).replace('.', ',')"></strong>
+                                <button type="button" @click="locateCriticalCourse(item)" class="ml-auto rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[10px] font-black text-red-700 hover:bg-red-100">
+                                    Cari di tabel
+                                </button>
                             </div>
                         </div>
                     </template>

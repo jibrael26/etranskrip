@@ -209,7 +209,7 @@
                     <textarea @paste.prevent="parsePaste($event)" class="h-32 w-full resize-none rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white outline-none placeholder:text-slate-400 focus:border-orange-300 focus:ring-2 focus:ring-orange-300/30" placeholder="Klik lalu tekan Ctrl + V untuk menempel data Excel..."></textarea>
                     <p class="mt-3 text-xs leading-5 text-slate-300"><span class="font-bold text-orange-300">Tips:</span> Gunakan format kolom impor yang sama seperti template Excel aplikasi agar data terbaca dengan benar.</p>
                     <div class="mt-6 grid gap-2 sm:grid-cols-2">
-                        <button type="button" @click="openConfirmation('Simpan transkrip?', 'Data transkrip akan disimpan ke dalam history Anda.', 'save')" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
+                        <button type="button" @click="openConfirmation('Simpan transkrip?', 'Data transkrip akan disimpan ke dalam riwayat Anda.', 'save')" wire:loading.attr="disabled" class="flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20 disabled:cursor-wait disabled:opacity-60">
                             <span wire:loading.remove wire:target="simpanTranskrip">Simpan Transkrip</span>
                             <span wire:loading wire:target="simpanTranskrip">Menyimpan...</span>
                         </button>

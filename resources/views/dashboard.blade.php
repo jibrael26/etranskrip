@@ -14,7 +14,7 @@
                             + Buat Transkrip
                         </a>
                         <a href="{{ route('transcripts.index') }}" wire:navigate class="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20">
-                            Lihat History
+                            Lihat Riwayat
                         </a>
                     </div>
                 </div>
@@ -128,7 +128,7 @@
                 @foreach ([
                     ['01', 'Isi identitas', 'Lengkapi nama, NIM, tanggal lulus, dan data dokumen mahasiswa.'],
                     ['02', 'Impor data nilai', 'Salin tabel dari Excel, tempelkan ke area impor, lalu periksa hasilnya.'],
-                    ['03', 'Simpan & cetak', 'Simpan dokumen agar masuk history dan dapat dicetak kembali kapan saja.'],
+                    ['03', 'Simpan & cetak', 'Simpan dokumen agar masuk riwayat dan dapat dicetak kembali kapan saja.'],
                 ] as [$number, $title, $description])
                     <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_18px_50px_-25px_rgba(15,35,75,.25)]">
                         <span class="text-sm font-black text-[#ff862d]">{{ $number }}</span>

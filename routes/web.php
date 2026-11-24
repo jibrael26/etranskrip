@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Livewire\TranskripForm;
 use App\Livewire\PengaturanTranskrip;
+use App\Livewire\TranskripForm;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -34,10 +34,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/transkrip/{transcript}', TranskripForm::class)->name('transkrip.edit');
     Route::get('/pengaturan-transkrip', PengaturanTranskrip::class)->name('transkrip.settings');
     Route::get('/history-transkrip', function () {
-        $transcripts = auth()->user()->transcripts()->latest()->paginate(12);
+        $search = trim((string) request('search', ''));
+        $query = auth()->user()->transcripts()->latest();
 
-        return view('transcripts.index', compact('transcripts'));
+        if ($search !== '') {
+            $query->where(function ($query) use ($search) {
+                $query->where('student_name', 'like', "%{$search}%")
+                    ->orWhere('student_nim', 'like', "%{$search}%")
+                    ->orWhere('header->no_transkrip', 'like', "%{$search}%");
+            });
+        }
+
+        $transcripts = $query->paginate(12)->withQueryString();
+
+        return view('transcripts.index', compact('transcripts', 'search'));
     })->name('transcripts.index');
+
+    Route::delete('/history-transkrip/{transcript}', function (int $transcript) {
+        auth()->user()->transcripts()->findOrFail($transcript)->delete();
+
+        return redirect()->route('transcripts.index', [
+            'search' => request('search'),
+        ])->with('status', 'Transkrip berhasil dihapus.');
+    })->name('transcripts.destroy');
 });
 
 require __DIR__.'/settings.php';
